@@ -6,4 +6,4 @@
     echo "\n<script>"
     cat index.js
     echo "\n</script>"
-)
+) > terminal.html
