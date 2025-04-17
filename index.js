@@ -148,6 +148,31 @@
     function generateUniqueId() {
       return Date.now().toString(36) + Math.random().toString(36).substring(2);
     }
+
+    /**
+     * Clear all authentication data from cookie and localStorage
+     */
+    function clearAuthData() {
+      // Clear localStorage items
+      localStorage.removeItem('terminal_auth_token');
+      localStorage.removeItem('terminal_user_profile');
+      localStorage.removeItem('github_oauth_state');
+      
+      // Clear auth cookies
+      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Update application state
+      state.auth.token = null;
+      state.auth.userProfile = null;
+      state.auth.isAuthenticated = false;
+      
+      // Update UI elements
+      updateAuthUI();
+      
+      // Don't hide the terminal immediately since we want to show the cooldown message
+      // Just update the auth status
+      log('Session expired. Authentication cleared.', 'error');
+    }
     
     //=============================================================================
     // AUTHENTICATION MANAGEMENT
@@ -313,6 +338,11 @@
             <span>${state.auth.userProfile.name || state.auth.userProfile.login}</span>
           </div>
         `;
+
+        // Update style to position in right corner
+        authStatus.style.marginLeft = 'auto';
+        authStatus.style.marginRight = '10px';
+        authStatus.style.order = '3';
       } else {
         // Show not authenticated
         authStatus.innerText = 'Not authenticated';
@@ -416,6 +446,80 @@
     // TERMINAL MANAGEMENT
     //=============================================================================
     
+    /**
+     * Create a new terminal tab
+     */
+    function createNewTerminalTab() {
+      // Get current tab count
+      const tabsContainer = document.querySelector('.terminal-tabs-list');
+      const existingTabs = tabsContainer.querySelectorAll('.terminal-tab');
+      const currentTabCount = existingTabs.length;
+      
+      // Check if we're at the maximum number of tabs (3)
+      if (currentTabCount >= 4) {
+        log('Maximum number of terminals reached (4)', 'error');
+        return;
+      }
+      
+      // Generate new tab ID (will be 2 or 3 based on existing tabs)
+      const newTabId = (currentTabCount + 1).toString();
+      
+      // Create tab element
+      const newTab = document.createElement('div');
+      newTab.id = `terminal-tab-${newTabId}`;
+      newTab.className = 'terminal-tab';
+      newTab.style.fontFamily = 'monospace';
+      newTab.style.padding = '5px 15px';
+      newTab.style.marginRight = '5px';
+      newTab.style.cursor = 'pointer';
+      newTab.style.backgroundColor = '#222';
+      newTab.style.borderRadius = '4px 4px 0 0';
+      newTab.textContent = `Terminal ${newTabId}`;
+      
+      // Add tab before the "+" button
+      const addButton = document.getElementById('add-terminal-tab');
+      tabsContainer.insertBefore(newTab, addButton);
+      
+      // Create terminal container
+      createTerminalContainer(newTabId);
+      
+      // Add click event to new tab
+      newTab.addEventListener('click', function() {
+        switchTab(newTabId);
+      });
+      
+      // Switch to the new tab
+      switchTab(newTabId);
+    }
+
+    /**
+     * Create a new terminal container
+     * @param {string} tabId - Tab identifier
+     */
+    function createTerminalContainer(tabId) {
+      // Check if container already exists
+      if (document.getElementById(`terminal-container-${tabId}`)) {
+        return;
+      }
+      
+      // Create container element
+      const newContainer = document.createElement('div');
+      newContainer.id = `terminal-container-${tabId}`;
+      newContainer.className = 'terminal-container';
+      newContainer.style.flex = '1';
+      newContainer.style.overflow = 'hidden';
+      newContainer.style.background = '#000';
+      newContainer.style.width = '100%';
+      newContainer.style.display = 'none';
+      
+      // Add container to wrapper
+      const wrapper = getElement('terminalWrapper');
+      const statusPanel = getElement('connection-status');
+      if (wrapper && statusPanel) {
+        wrapper.insertBefore(newContainer, statusPanel);
+      }
+    }
+
     /**
      * Initialize terminal for a specific tab
      * @param {string} tabId - Tab identifier
@@ -787,6 +891,11 @@
             if (jsonData.cooldown) {
               const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
               showCooldownMessage(tabId, formattedTime);
+
+              // Clear auth data on session expiration
+              if (jsonData.message && jsonData.message.includes('session expired')) {
+                clearAuthData();
+              }
             }
             break;
             
@@ -795,6 +904,9 @@
             if (jsonData.cooldown) {
               const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
               showCooldownMessage(tabId, formattedTime);
+
+              // Clear auth data on session termination
+              clearAuthData();
             }
             break;
             
@@ -1096,6 +1208,11 @@
     // Handle OAuth callback
     handleOAuthCallback();
     
+    // Pre-create terminal container for tab 1 (if not already in HTML)
+    if (!getElement('terminal-container-1')) {
+      createTerminalContainer('1');
+    }
+
     // Setup event listeners
     setupEventListeners();
     
@@ -1163,6 +1280,18 @@
       elements.githubLoginButton.addEventListener('click', initiateGitHubLogin);
     }
     
+    // Add terminal tab button
+    const addTerminalTabButton = getElement('add-terminal-tab');
+    if (addTerminalTabButton) {
+      addTerminalTabButton.addEventListener('click', function() {
+        if (state.auth.isAuthenticated) {
+          createNewTerminalTab();
+        } else {
+          log('Please login first', 'error');
+        }
+      });
+    }
+
     // Terminal tabs
     if (elements.tab1) {
       elements.tab1.addEventListener('click', function() {
