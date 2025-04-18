@@ -1,6 +1,4 @@
 /**
- * Simplified Web Terminal Application
- * 
  * A browser-based terminal interface connecting to remote environments via WebSockets.
  * State management is delegated to the server.
  */
@@ -386,10 +384,19 @@
       Object.keys(state.websockets).forEach(tabId => {
         if (state.websockets[tabId]) {
           try {
-            state.websockets[tabId].close();
+            // Save reference to allow checking readyState later
+            const ws = state.websockets[tabId];
+            
+            // Remove the onclose handler to prevent errors
+            ws.onclose = null;
+            
+            // Now close the connection
+            ws.close();
           } catch (e) {
             console.error(`Error closing websocket for tab ${tabId}:`, e);
           }
+          
+          // Set to null after closing
           state.websockets[tabId] = null;
         }
       });
@@ -400,6 +407,7 @@
      * @returns {boolean} Authentication status
      */
     function checkExistingAuth() {
+
       // Check for existing authentication in localStorage
       const storedToken = localStorage.getItem('terminal_auth_token');
       const storedProfile = localStorage.getItem('terminal_user_profile');
@@ -480,6 +488,13 @@
       const addButton = document.getElementById('add-terminal-tab');
       tabsContainer.insertBefore(newTab, addButton);
       
+      // Store tab ID in localStorage
+      const activeTabs = JSON.parse(localStorage.getItem('terminal_active_tabs') || '["1"]');
+      if (!activeTabs.includes(newTabId)) {
+        activeTabs.push(newTabId);
+        localStorage.setItem('terminal_active_tabs', JSON.stringify(activeTabs));
+      }
+
       // Create terminal container
       createTerminalContainer(newTabId);
       
@@ -639,6 +654,22 @@
       const container = getElement(`terminal-container-${tabId}`);
       if (!container) return;
       
+      // Hide the tabs container during cooldown
+      const tabsContainer = getElement('terminal-tabs-container');
+      if (tabsContainer) {
+        tabsContainer.style.display = 'none';
+      }
+
+      // If there's an actual terminal, dispose of it
+      if (state.terminals[tabId]) {
+        try {
+          state.terminals[tabId].dispose();
+        } catch (e) {
+          console.error(`Error disposing terminal: ${e}`);
+        }
+        state.terminals[tabId] = null;
+      }
+
       container.innerHTML = `
         <div style="
           position: absolute; 
@@ -666,12 +697,18 @@
     }
     
     /**
-     * Show reconnect UI after cooldown has ended
+     * Show UI after cooldown has ended
      * @param {string} tabId - Tab identifier
      */
     function showReconnectUI(tabId) {
       const container = getElement(`terminal-container-${tabId}`);
       if (!container) return;
+      
+      // Keep tabs hidden until user reconnects
+      const tabsContainer = getElement('terminal-tabs-container');
+      if (tabsContainer) {
+        tabsContainer.style.display = 'none';
+      }
       
       container.innerHTML = `
         <div style="
@@ -699,12 +736,75 @@
       const reconnectButton = getElement('reconnect-button');
       if (reconnectButton) {
         reconnectButton.addEventListener('click', function() {
+          // Show tabs when reconnecting
+          if (tabsContainer) {
+            tabsContainer.style.display = 'flex';
+          }
+          
           // Initialize terminal and connect
           initializeAndConnectTerminal(tabId);
         });
       }
+    }
+
+    /**
+     * Show message when connection dies unexpectedly
+     * @param {string} tabId - Tab identifier
+     */
+    function showConnectionFailurePrompt(tabId) {
+      const container = getElement(`terminal-container-${tabId}`);
+      if (!container) return;
       
-      //updateStatusPanel('Ready to connect.', 'info');
+      // Clear authentication data before showing the prompt
+      clearAuthData();
+      
+      // Hide the tabs container
+      const tabsContainer = getElement('terminal-tabs-container');
+      if (tabsContainer) {
+        tabsContainer.style.display = 'none';
+      }
+      
+      container.innerHTML = `
+        <div style="
+          position: absolute; 
+          top: 50%; 
+          left: 50%; 
+          transform: translate(-50%, -50%);
+          color: #ff5555;
+          text-align: center;
+          font-family: monospace;
+          font-size: 18px;
+          background-color: rgba(0, 0, 0, 0.85);
+          padding: 20px;
+          border-radius: 8px;
+          width: 80%;
+          max-width: 500px;
+        ">
+          Connection to the server has been lost<br>
+          <span style="font-size: 14px; color: #ffffff; margin-top: 10px; display: block;">
+            Please reload the page to reconnect
+          </span>
+          <button id="reload-page-button" style="
+            margin-top: 15px; 
+            padding: 8px 16px; 
+            background: #444; 
+            border: 1px solid #666; 
+            color: white; 
+            cursor: pointer; 
+            border-radius: 3px;
+          ">
+            Reload Now
+          </button>
+        </div>
+      `;
+      
+      // Add click handler for reload button
+      const reloadButton = getElement('reload-page-button');
+      if (reloadButton) {
+        reloadButton.addEventListener('click', function() {
+          window.location.reload();
+        });
+      }
     }
     
     /**
@@ -747,6 +847,7 @@
      */
     function connectWebSocket(tabId, checkExistingSession = false) {
       return new Promise((resolve, reject) => {
+        
         // Close existing connection if any
         if (state.websockets[tabId]) {
           try {
@@ -805,25 +906,32 @@
               type: 'auth'
             }));
             
-            // Set up other handlers
-            setupWebSocketHandlers(tabId);
-            
             resolve();
           };
           
+          // Setup message handler
+          state.websockets[tabId].onmessage = function(event) {
+            handleWebSocketMessage(event, tabId);
+          };
+
+          // Setup error handler
           state.websockets[tabId].onerror = function(error) {
             clearTimeout(connectionTimeout);
             log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
             reject(error);
           };
           
+          // Setup close handler
           state.websockets[tabId].onclose = function(event) {
             clearTimeout(connectionTimeout);
             
             if (event.wasClean) {
               log(`Connection closed cleanly, code: ${event.code}`, 'info');
             } else {
-              log('Connection died', 'error');
+              log('Connection died unexpectedly', 'error');
+
+              // Show connection failure prompt
+              showConnectionFailurePrompt(tabId);
             }
             
             // Only reject if the connection hasn't been established yet
@@ -837,17 +945,6 @@
           reject(error);
         }
       });
-    }
-      
-    /**
-     * Setup WebSocket event handlers - simplified version
-     * @param {string} tabId - Tab identifier
-     * @param {number} connectionTimeout - Connection timeout ID
-     */
-    function setupWebSocketHandlers(tabId) {
-      state.websockets[tabId].onmessage = function(event) {
-        handleWebSocketMessage(event, tabId);
-      };
     }
     
     /**
@@ -867,11 +964,23 @@
           case 'vm_creating':
             showTerminalLoading(tabId, 'Creating your environment...');
             log('Your environment is being created. Please wait...', 'info');
+
+            // Disable add terminal button while VM is creating
+            setAddTerminalButtonState(false);
             break;
             
           case 'vm_ready':
             log('Your environment is ready!', 'success');
             
+            // Show tabs container when VM is ready
+            const tabsContainer = getElement('terminal-tabs-container');
+            if (tabsContainer && state.auth.isAuthenticated) {
+              tabsContainer.style.display = 'flex';
+            }
+
+            // Enable add terminal button when VM is ready
+            setAddTerminalButtonState(true);
+
             // Initialize proper terminal if needed
             if (!state.terminals[tabId]) {
               initializeTerminal(tabId);
@@ -888,25 +997,60 @@
             
           case 'error':
             log(`Error: ${jsonData.message}`, 'error');
+            setAddTerminalButtonState(false);
+
             if (jsonData.cooldown) {
+              console.log("Cooldown received - showing message");
+
               const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
+              
+              // Show cooldown message before closing connections
               showCooldownMessage(tabId, formattedTime);
 
               // Clear auth data on session expiration
               if (jsonData.message && jsonData.message.includes('session expired')) {
                 clearAuthData();
               }
+
+              // Disconnect all terminals
+              setTimeout(() => {
+                // Remove onclose handlers to avoid errors
+                Object.keys(state.websockets).forEach(id => {
+                  if (state.websockets[id]) {
+                    state.websockets[id].onclose = null;
+                  }
+                });
+                
+                // Then close all connections
+                closeAllConnections();
+              }, 200);
             }
             break;
             
           // Handle session termination with cooldown  
           case 'environment_terminated':
+            console.log("Environment terminated - showing cooldown message");
+
+            setAddTerminalButtonState(false);
+
             if (jsonData.cooldown) {
               const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
               showCooldownMessage(tabId, formattedTime);
 
               // Clear auth data on session termination
               clearAuthData();
+
+              // Close all connections to prevent further attempts
+              setTimeout(() => {
+                // Remove onclose handlers
+                Object.keys(state.websockets).forEach(id => {
+                  if (state.websockets[id]) {
+                    state.websockets[id].onclose = null;
+                  }
+                });
+                
+                closeAllConnections();
+              }, 200);
             }
             break;
             
@@ -1024,6 +1168,31 @@
       wrapper.style.bottom = '-' + wrapper.offsetHeight + 'px';
     }
     
+    /**
+     * Set the add terminal button state
+     * @param {boolean} enabled - Whether the button should be enabled
+     */
+    function setAddTerminalButtonState(enabled) {
+      const addButton = getElement('add-terminal-tab');
+      if (!addButton) return;
+      
+      if (enabled) {
+        // Enable the button
+        addButton.style.opacity = '1';
+        addButton.style.cursor = 'pointer';
+        addButton.style.backgroundColor = '#333';
+        addButton.style.borderColor = '#555';
+        addButton.disabled = false;
+      } else {
+        // Disable the button
+        addButton.style.opacity = '0.5';
+        addButton.style.cursor = 'not-allowed';
+        addButton.style.backgroundColor = '#222';
+        addButton.style.borderColor = '#444';
+        addButton.disabled = true;
+      }
+    }
+
     /**
      * Toggle terminal visibility
      */
@@ -1213,6 +1382,9 @@
       createTerminalContainer('1');
     }
 
+    // Initialize add terminal button as disabled
+    setAddTerminalButtonState(false);
+
     // Setup event listeners
     setupEventListeners();
     
@@ -1226,6 +1398,15 @@
           }
         });
       }
+    });
+
+    // Add window unload handler to clean up connections
+    window.addEventListener('beforeunload', function() {
+      // Close all connections cleanly before page unloads
+      closeAllConnections();
+      
+      // Clear all stored terminal IDs
+      localStorage.removeItem('terminal_active_tabs');
     });
     
     // If authenticated, show terminal
@@ -1279,11 +1460,17 @@
     if (elements.githubLoginButton) {
       elements.githubLoginButton.addEventListener('click', initiateGitHubLogin);
     }
-    
+
+
     // Add terminal tab button
     const addTerminalTabButton = getElement('add-terminal-tab');
     if (addTerminalTabButton) {
       addTerminalTabButton.addEventListener('click', function() {
+        // Skip if button is disabled
+        if (addTerminalTabButton.disabled) {
+          return;
+        }
+        
         if (state.auth.isAuthenticated) {
           createNewTerminalTab();
         } else {
