@@ -1,80 +1,234 @@
 /**
  * A browser-based terminal interface connecting to remote environments via WebSockets.
- * State management is delegated to the server.
+ * Organized into logical modules for better maintainability.
  */
 (function() {
-    //=============================================================================
-    // CONFIGURATION
-    //=============================================================================
-    const CONFIG = {
-      // WebSocket settings
-      WS_URL: 'ws://localhost:8081', // Replace with your WebSocket server URL
-      
-      // GitHub OAuth settings
-      GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv', // Replace with your client ID
-      GITHUB_REDIRECT_URI: 'http://localhost:3000/auth/github/callback',
-      GITHUB_SCOPE: 'read:user',
-      
-      // Auth server
-      AUTH_SERVER: 'http://localhost:3000',
-      
-      // Terminal settings
-      DEFAULT_COLS: 120,
-      DEFAULT_ROWS: 30,
-      DEFAULT_HEIGHT: 450,
-      MIN_HEIGHT: 200,
-      MAX_HEIGHT: 800,
-      
-      // Connection settings
-      MAX_CONNECT_ATTEMPTS: 3,
-      CONNECT_RETRY_DELAY: 2000,
-      CONNECTION_TIMEOUT: 10000,
-      
-      // UI Settings
-      TERMINAL_TRANSITION_SPEED: '0.3s',
-      
-      // Debug settings
-      DEBUG: true
-    };
+  //=============================================================================
+  // CONFIGURATION
+  //=============================================================================
+  const CONFIG = {
+    // WebSocket settings
+    WS_URL: 'ws://localhost:8081', // Replace with your WebSocket server URL
     
-    //=============================================================================
-    // STATE MANAGEMENT - Simplified to essentials
-    //=============================================================================
-    const state = {
-      // Terminal instances
-      terminals: {},
-      fitAddons: {},
-      websockets: {},
-      
-      // UI state
-      isTerminalVisible: false,
-      activeTabId: "1",
-      
-      // Authentication state
-      auth: {
-        isAuthenticated: false,
-        token: null,
-        userProfile: null
-      }
-    };
+    // GitHub OAuth settings
+    GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv', // Replace with your client ID
+    GITHUB_REDIRECT_URI: 'http://localhost:3000/auth/github/callback',
+    GITHUB_SCOPE: 'read:user',
     
-    // Connection attempt tracking flag
-    let connectionInProgress = false;
+    // Auth server
+    AUTH_SERVER: 'http://localhost:3000',
+    
+    // Terminal settings
+    DEFAULT_COLS: 120,
+    DEFAULT_ROWS: 30,
+    DEFAULT_HEIGHT: 450,
+    MIN_HEIGHT: 200,
+    MAX_HEIGHT: 800,
+    
+    // Connection settings
+    MAX_CONNECT_ATTEMPTS: 3,
+    CONNECT_RETRY_DELAY: 2000,
+    CONNECTION_TIMEOUT: 10000,
+    
+    // UI Settings
+    TERMINAL_TRANSITION_SPEED: '0.3s',
+    
+    // Debug settings
+    DEBUG: true
+  };
 
-    //=============================================================================
-    // UTILITY FUNCTIONS
-    //=============================================================================
+  // Make CONFIG global so it's accessible in all modules and closures
+  window.CONFIG = CONFIG;
+
+  //=============================================================================
+  // APP INITIALIZATION
+  //=============================================================================
+  
+  /**
+   * Initialize the application
+   */
+  function initialize() {
+    // Check for existing authentication
+    const existingAuth = Auth.checkExistingAuth();
     
+    // Handle OAuth callback
+    Auth.handleOAuthCallback();
+    
+    // Pre-create terminal container for tab 1 (if not already in HTML)
+    if (!Utility.getElement('terminal-container-1')) {
+      TerminalManager.createTerminalContainer('1');
+    }
+
+    // Initialize add terminal button as disabled
+    UI.setAddTerminalButtonState(false);
+
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Setup window resize handler
+    window.addEventListener('resize', function() {
+      // Resize all terminals when window is resized
+      if (state.isTerminalVisible) {
+        Object.keys(state.terminals).forEach(id => {
+          if (state.terminals[id] && state.fitAddons[id]) {
+            TerminalManager.resizeTerminal(id);
+          }
+        });
+      }
+    });
+
+    // Add window unload handler to clean up connections
+    window.addEventListener('beforeunload', function() {
+      // Close all connections cleanly before page unloads
+      Connection.closeAllConnections();
+      
+      // Clear all stored terminal IDs
+      localStorage.removeItem('terminal_active_tabs');
+    });
+    
+    // If authenticated, show terminal
+    if (existingAuth) {
+      setTimeout(() => UI.showTerminal(), 500);
+    } else {
+      // Show login container
+      const loginContainer = Utility.getElement('login-container');
+      if (loginContainer) {
+        loginContainer.style.display = 'block';
+      }
+    }
+  }
+  
+  /**
+   * Setup event listeners
+   */
+  function setupEventListeners() {
+    // Get elements
+    const elements = {
+      toggleButton: Utility.getElement('terminalToggle'),
+      wrapper: Utility.getElement('terminalWrapper'),
+      minimizeButton: Utility.getElement('terminalMinimize'),
+      closeButton: Utility.getElement('terminalClose'),
+      resizeHandle: Utility.getElement('terminalResizeHandle'),
+      header: Utility.getElement('terminalHeader'),
+      githubLoginButton: Utility.getElement('github-login-button'),
+      tab1: Utility.getElement('terminal-tab-1'),
+      tab2: Utility.getElement('terminal-tab-2')
+    };
+    
+    // Terminal toggle button
+    if (elements.toggleButton) {
+      elements.toggleButton.addEventListener('click', () => UI.toggleTerminal());
+    }
+    
+    // Terminal minimize button
+    if (elements.minimizeButton) {
+      elements.minimizeButton.addEventListener('click', () => UI.toggleTerminal());
+    }
+    
+    // Terminal close button
+    if (elements.closeButton) {
+      elements.closeButton.addEventListener('click', function() {
+        Connection.closeAllConnections();
+        UI.hideTerminal();
+      });
+    }
+    
+    // GitHub login button
+    if (elements.githubLoginButton) {
+      elements.githubLoginButton.addEventListener('click', () => Auth.initiateGitHubLogin());
+    }
+
+    // Add terminal tab button
+    const addTerminalTabButton = Utility.getElement('add-terminal-tab');
+    if (addTerminalTabButton) {
+      addTerminalTabButton.addEventListener('click', function() {
+        // Skip if button is disabled
+        if (addTerminalTabButton.disabled) {
+          return;
+        }
+        
+        if (state.auth.isAuthenticated) {
+          TerminalManager.createNewTerminalTab();
+        } else {
+          Utility.log('Please login first', 'error');
+        }
+      });
+    }
+
+    // Terminal tabs
+    if (elements.tab1) {
+      elements.tab1.addEventListener('click', function() {
+        UI.switchTab('1');
+      });
+    }
+    
+    if (elements.tab2) {
+      elements.tab2.addEventListener('click', function() {
+        UI.switchTab('2');
+      });
+    }
+    
+    // Setup resize and drag functionality
+    if (elements.resizeHandle && elements.wrapper) {
+      UI.setupVerticalResize(elements.resizeHandle, elements.wrapper);
+    }
+    
+    if (elements.header && elements.wrapper) {
+      UI.setupHorizontalDrag(elements.header, elements.wrapper);
+    }
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Alt+T to toggle terminal
+      if (e.altKey && e.key === 't') {
+        UI.toggleTerminal();
+        e.preventDefault();
+      }
+    });
+  }
+  
+  // Initialize the application when DOM is ready
+  document.addEventListener('DOMContentLoaded', initialize);
+})();
+  
+  //=============================================================================
+  // STATE MANAGEMENT - Simplified to essentials
+  //=============================================================================
+  const state = {
+    // Terminal instances
+    terminals: {},
+    fitAddons: {},
+    websockets: {},
+    
+    // UI state
+    isTerminalVisible: false,
+    activeTabId: "1",
+    
+    // Authentication state
+    auth: {
+      isAuthenticated: false,
+      token: null,
+      userProfile: null
+    }
+  };
+  
+  // Connection attempt tracking flag
+  let connectionInProgress = false;
+
+  //=============================================================================
+  // UTILITY MODULE - General helper functions
+  //=============================================================================
+  const Utility = {
     /**
      * Format date for display
      * @param {Date} date - Date to format
      * @returns {string} Formatted date string
      */
-    function formatDate(date) {
+    formatDate(date) {
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
       return `${hours}:${minutes}`;
-    }
+    },
   
     /**
      * Log message to console and optionally to UI
@@ -82,22 +236,24 @@
      * @param {string} type - Message type: 'info', 'error', 'success'
      * @param {string} tabId - Tab identifier
      */
-    function log(message, type = 'info', tabId = state.activeTabId) {
-      if (CONFIG.DEBUG) {
+    log(message, type = 'info', tabId = state.activeTabId) {
+      if (window.CONFIG.DEBUG) {
         console.log(`[Tab ${tabId}] ${message}`);
       }
       
-      // Update status panel
-      //updateStatusPanel(message, type);
-    }
+      // Update status panel if needed
+      if (type === 'error' || type === 'success') {
+        this.updateStatusPanel(message, type);
+      }
+    },
     
     /**
      * Update the status panel with a message
      * @param {string} message - Message to display
      * @param {string} type - Message type: 'info', 'error', 'success'
      */
-    function updateStatusPanel(message, type = 'info') {
-      const statusPanel = document.getElementById('connection-status');
+    updateStatusPanel(message, type = 'info') {
+      const statusPanel = this.getElement('connection-status');
       if (!statusPanel) return;
       
       // Color-code messages
@@ -108,7 +264,7 @@
       
       statusPanel.innerHTML = `<span style="color: ${color}">${message}</span>`;
       statusPanel.style.display = 'block';
-    }
+    },
     
     /**
      * Get DOM element safely with error logging
@@ -116,19 +272,32 @@
      * @param {boolean} required - Whether the element is required
      * @returns {HTMLElement|null} The element or null if not found
      */
-    function getElement(id, required = false) {
+    getElement(id, required = false) {
       const element = document.getElementById(id);
       if (!element && required) {
         console.error(`Required element not found: ${id}`);
       }
       return element;
-    }
+    },
     
+    /**
+     * Generate a unique ID
+     * @returns {string} A unique identifier
+     */
+    generateUniqueId() {
+      return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+  };
+
+  //=============================================================================
+  // AUTH MODULE - Authentication related functionality
+  //=============================================================================
+  const Auth = {
     /**
      * Get an auth token from cookies
      * @returns {string|null} Auth token or null if not found
      */
-    function getAuthTokenFromCookie() {
+    getAuthTokenFromCookie() {
       // Try cookie first
       const cookies = document.cookie.split(';');
       for (let cookie of cookies) {
@@ -137,20 +306,13 @@
           return value;
         }
       }
-    }
+      return null;
+    },
     
-    /**
-     * Generate a unique ID
-     * @returns {string} A unique identifier
-     */
-    function generateUniqueId() {
-      return Date.now().toString(36) + Math.random().toString(36).substring(2);
-    }
-
     /**
      * Clear all authentication data from cookie and localStorage
      */
-    function clearAuthData() {
+    clearAuthData() {
       // Clear localStorage items
       localStorage.removeItem('terminal_auth_token');
       localStorage.removeItem('terminal_user_profile');
@@ -165,48 +327,41 @@
       state.auth.isAuthenticated = false;
       
       // Update UI elements
-      updateAuthUI();
+      this.updateAuthUI();
       
-      // Don't hide the terminal immediately since we want to show the cooldown message
-      // Just update the auth status
-      log('Session expired. Authentication cleared.', 'error');
-    }
-    
-    //=============================================================================
-    // AUTHENTICATION MANAGEMENT
-    //=============================================================================
+      // Log the status
+      Utility.log('Session expired. Authentication cleared.', 'error');
+    },
     
     /**
      * Start GitHub OAuth flow
      */
-    function initiateGitHubLogin() {
+    initiateGitHubLogin() {
       // Save current state to check against CSRF
       const oauthState = Math.random().toString(36).substring(2, 15);
       localStorage.setItem('github_oauth_state', oauthState);
       
       // Build GitHub authorization URL
-      const authUrl = `https://github.com/login/oauth/authorize?client_id=${CONFIG.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(CONFIG.GITHUB_SCOPE)}&state=${oauthState}`;
+      const authUrl = `https://github.com/login/oauth/authorize?client_id=${window.CONFIG.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.CONFIG.GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(window.CONFIG.GITHUB_SCOPE)}&state=${oauthState}`;
       
       // Log debug info
-      if (CONFIG.DEBUG) {
+      if (window.CONFIG.DEBUG) {
         console.log('Initiating GitHub OAuth flow');
         console.log('GitHub Authorization URL:', authUrl);
       }
       
       // Redirect to GitHub
       window.location.href = authUrl;
-    }
+    },
     
     /**
      * Handle OAuth callback
      */
-    function handleOAuthCallback() {
+    handleOAuthCallback() {
       const urlParams = new URLSearchParams(window.location.search);
       const authSuccess = urlParams.get('auth_success');
       
       if (authSuccess === 'true') {
-        //console.log('Auth success detected in URL');
-        
         // Clean URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
         
@@ -214,29 +369,26 @@
         sessionStorage.setItem('from_github_login', 'true');
         
         // Use existing token validation function
-        validateTokenFromCookie();
+        this.validateTokenFromCookie();
       }
-    }
+    },
     
     /**
      * Validate token from cookie
      */
-    function validateTokenFromCookie() {
-      const authToken = getAuthTokenFromCookie();
+    validateTokenFromCookie() {
+      const authToken = this.getAuthTokenFromCookie();
       
       if (!authToken) {
         console.warn('No auth token cookie found');
-        console.log('Cookies available:', document.cookie);  // Debug to see all cookies
-        updateAuthStatus('No authentication token found', 'error');
+        this.updateAuthStatus('No authentication token found', 'error');
         return;
       }
       
-      // console.log('Auth token found in cookie, first 10 chars:', authToken.substring(0, 10) + '...');
-      
-      updateAuthStatus('Validating token...', 'info');
+      this.updateAuthStatus('Validating token...', 'info');
       
       // Validate token with auth server
-      fetch(`${CONFIG.AUTH_SERVER}/validate-token`, {
+      fetch(`${window.CONFIG.AUTH_SERVER}/validate-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -257,22 +409,22 @@
           };
           
           // Set authenticated state
-          setAuthenticatedState(authToken, userProfile);
+          this.setAuthenticatedState(authToken, userProfile);
           
           // Show terminal
-          showTerminal();
+          UI.showTerminal();
           
           // Connect to session
-          initializeAndConnectTerminal(state.activeTabId);
+          TerminalManager.initializeAndConnectTerminal(state.activeTabId);
         } else {
-          updateAuthStatus('Token validation failed', 'error');
+          this.updateAuthStatus('Token validation failed', 'error');
         }
       })
       .catch(error => {
         console.error('Token Validation Error:', error);
-        updateAuthStatus('Error validating token', 'error');
+        this.updateAuthStatus('Error validating token', 'error');
       });
-    }
+    },
     
     /**
      * Set authenticated state
@@ -280,10 +432,10 @@
      * @param {Object} profile - User profile
      * @returns {boolean} Success status
      */
-    function setAuthenticatedState(token, profile) {
+    setAuthenticatedState(token, profile) {
       if (!profile || !profile.login || profile.login === '') {
         console.error('Cannot authenticate with invalid profile');
-        updateAuthStatus('Authentication failed: Invalid user profile', 'error');
+        this.updateAuthStatus('Authentication failed: Invalid user profile', 'error');
         return false;
       }
       
@@ -297,18 +449,18 @@
       localStorage.setItem('terminal_user_profile', JSON.stringify(profile));
       
       // Update UI
-      updateAuthUI();
+      this.updateAuthUI();
       
       return true;
-    }
+    },
     
     /**
      * Update authentication status display
      * @param {string} message - Status message
      * @param {string} type - Message type: 'info', 'error', 'success'
      */
-    function updateAuthStatus(message, type = 'info') {
-      const authStatus = getElement('auth-status');
+    updateAuthStatus(message, type = 'info') {
+      const authStatus = Utility.getElement('auth-status');
       if (!authStatus) return;
       
       let color = '#ccc';
@@ -318,13 +470,13 @@
       
       authStatus.innerText = message;
       authStatus.style.color = color;
-    }
+    },
     
     /**
      * Update UI based on auth state
      */
-    function updateAuthUI() {
-      const authStatus = getElement('auth-status');
+    updateAuthUI() {
+      const authStatus = Utility.getElement('auth-status');
       if (!authStatus) return;
       
       if (state.auth.isAuthenticated && state.auth.userProfile) {
@@ -346,12 +498,12 @@
         authStatus.innerText = 'Not authenticated';
         authStatus.style.color = '#ff5555';
       }
-    }
+    },
     
     /**
      * Logout function
      */
-    function logout() {
+    logout() {
       // Clear auth state
       state.auth.token = null;
       state.auth.userProfile = null;
@@ -362,25 +514,301 @@
       localStorage.removeItem('terminal_user_profile');
       
       // Update UI
-      updateAuthUI();
+      this.updateAuthUI();
       
       // Hide terminal
-      hideTerminal();
+      UI.hideTerminal();
       
       // Show login container
-      const loginContainer = getElement('login-container');
+      const loginContainer = Utility.getElement('login-container');
       if (loginContainer) {
         loginContainer.style.display = 'block';
       }
       
       // Close all connections
-      closeAllConnections();
+      Connection.closeAllConnections();
+    },
+    
+    /**
+     * Check for existing authentication
+     * @returns {boolean} Authentication status
+     */
+    checkExistingAuth() {
+      // Check for existing authentication in localStorage
+      const storedToken = localStorage.getItem('terminal_auth_token');
+      const storedProfile = localStorage.getItem('terminal_user_profile');
+      
+      // Also check cookie
+      const cookieToken = this.getAuthTokenFromCookie();
+      
+      // If we have a stored profile and either token, consider authenticated
+      if (storedProfile && (storedToken || cookieToken)) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          
+          if (profile && profile.login && profile.login !== '') {
+            console.log('Found valid profile in storage:', profile.login);
+            
+            // Use whichever token we found
+            const token = storedToken || cookieToken;
+            
+            // Set auth state
+            state.auth.token = token;
+            state.auth.userProfile = profile;
+            state.auth.isAuthenticated = true;
+            
+            // Update UI
+            this.updateAuthUI();
+            
+            return true;
+          }
+        } catch (e) {
+          console.error('Error parsing stored profile:', e);
+        }
+      }
+      
+      // If we have a cookie token but no stored token, validate it
+      if (cookieToken && !storedToken) {
+        this.validateTokenFromCookie();
+        return false; // Return false since validation is async
+      }
+      
+      return false;
     }
+  };
+
+  //=============================================================================
+  // CONNECTION MODULE - WebSocket connection management
+  //=============================================================================
+  const Connection = {
+    /**
+     * Connect to WebSocket server with JWT authentication
+     * @param {string} tabId - Tab identifier
+     * @param {boolean} checkExistingSession - Force check for existing sessions
+     * @returns {Promise} Connection promise
+     */
+    connectWebSocket(tabId, checkExistingSession = false) {
+      return new Promise((resolve, reject) => {
+        // Close existing connection if any
+        if (state.websockets[tabId]) {
+          try {
+            state.websockets[tabId].close();
+          } catch (e) {
+            console.error(`Error closing existing websocket for tab ${tabId}:`, e);
+          }
+        }
+        
+        // Get auth token - try all possible storage locations
+        let authToken = Auth.getAuthTokenFromCookie();
+        
+        // If not in cookie, try localStorage backups
+        if (!authToken) {
+          authToken = localStorage.getItem('terminal_auth_token');
+        }
+        
+        if (!authToken) {
+          Utility.log('Cannot connect: Missing authentication token', 'error');
+          reject(new Error('Missing authentication token'));
+          return;
+        }
+        
+        // Get user ID for connection
+        const userId = state.auth.userProfile?.login;
+        const terminalId = 'terminal_' + tabId + '_' + Utility.generateUniqueId();
+        
+        // Create connection URL with the JWT token parameter
+        let wsUrl = `${window.CONFIG.WS_URL}?token=${encodeURIComponent(authToken)}&terminalid=${encodeURIComponent(terminalId)}`;
+        
+        // Add flag for forcing session check when logging in via GitHub
+        if (checkExistingSession) {
+          wsUrl += '&checksession=true';
+        }
+        
+        // Create WebSocket connection
+        try {
+          state.websockets[tabId] = new WebSocket(wsUrl);
+          
+          // Set a connection timeout
+          const connectionTimeout = setTimeout(function() {
+            if (state.websockets[tabId] && state.websockets[tabId].readyState !== WebSocket.OPEN) {
+              Utility.log('Connection timeout. Server not responding.', 'error');
+              if (state.websockets[tabId]) state.websockets[tabId].close();
+              reject(new Error('Connection timeout'));
+            }
+          }, window.CONFIG.CONNECTION_TIMEOUT);
+          
+          // Set up event handlers that resolve/reject the promise
+          state.websockets[tabId].onopen = function() {
+            clearTimeout(connectionTimeout);
+            Utility.log('WebSocket connection established', 'info');
+            
+            // Send auth message to start the terminal session
+            state.websockets[tabId].send(JSON.stringify({
+              type: 'auth'
+            }));
+            
+            resolve();
+          };
+          
+          // Setup message handler
+          state.websockets[tabId].onmessage = function(event) {
+            Connection.handleWebSocketMessage(event, tabId);
+          };
+
+          // Setup error handler
+          state.websockets[tabId].onerror = function(error) {
+            clearTimeout(connectionTimeout);
+            Utility.log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+            reject(error);
+          };
+          
+          // Setup close handler
+          state.websockets[tabId].onclose = function(event) {
+            clearTimeout(connectionTimeout);
+            
+            if (event.wasClean) {
+              Utility.log(`Connection closed cleanly, code: ${event.code}`, 'info');
+            } else {
+              Utility.log('Connection died unexpectedly', 'error');
+              // Show connection failure prompt
+              UI.showConnectionFailurePrompt(tabId);
+            }
+            
+            // Only reject if the connection hasn't been established yet
+            if (state.websockets[tabId].readyState !== WebSocket.OPEN) {
+              reject(new Error('Connection closed'));
+            }
+          };
+          
+        } catch (error) {
+          Utility.log(`Error creating WebSocket: ${error.message}`, 'error');
+          reject(error);
+        }
+      });
+    },
+    
+    /**
+     * Handle WebSocket message
+     * @param {MessageEvent} event - WebSocket message event
+     * @param {string} tabId - Tab identifier
+     */
+    handleWebSocketMessage(event, tabId) {
+      try {
+        // Try to parse as JSON
+        let jsonData = JSON.parse(event.data);
+
+        switch (jsonData.type) {
+          case 'vm_creating':
+            UI.showTerminalLoading(tabId, 'Creating your environment...');
+            Utility.log('Your environment is being created. Please wait...', 'info');
+
+            // Disable add terminal button while VM is creating
+            UI.setAddTerminalButtonState(false);
+            break;
+            
+          case 'vm_ready':
+            Utility.log('Your environment is ready!', 'success');
+            
+            // Show tabs container when VM is ready
+            const tabsContainer = Utility.getElement('terminal-tabs-container');
+            if (tabsContainer && state.auth.isAuthenticated) {
+              tabsContainer.style.display = 'flex';
+            }
+
+            // Enable add terminal button when VM is ready
+            UI.setAddTerminalButtonState(true);
+
+            // Initialize proper terminal if needed
+            if (!state.terminals[tabId]) {
+              TerminalManager.initializeTerminal(tabId);
+            }
+            break;
+            
+          case 'connected':
+            Utility.log('SSH connection established', 'success');
+            break;
+            
+          case 'data':
+            if (state.terminals[tabId]) state.terminals[tabId].write(jsonData.data);
+            break;
+            
+          case 'error':
+            Utility.log(`Error: ${jsonData.message}`, 'error');
+            UI.setAddTerminalButtonState(false);
+
+            if (jsonData.cooldown) {
+              console.log("Cooldown received - showing message");
+
+              const formattedTime = jsonData.cooldown.formattedTime || 
+                                   Utility.formatDate(new Date(jsonData.cooldown.expiryTimestamp));
+              
+              // Show cooldown message before closing connections
+              UI.showCooldownMessage(tabId, formattedTime);
+
+              // Clear auth data on session expiration
+              if (jsonData.message && jsonData.message.includes('session expired')) {
+                Auth.clearAuthData();
+              }
+
+              // Disconnect all terminals
+              setTimeout(() => {
+                // Remove onclose handlers to avoid errors
+                Object.keys(state.websockets).forEach(id => {
+                  if (state.websockets[id]) {
+                    state.websockets[id].onclose = null;
+                  }
+                });
+                
+                // Then close all connections
+                this.closeAllConnections();
+              }, 200);
+            }
+            break;
+            
+          // Handle session termination with cooldown  
+          case 'environment_terminated':
+            console.log("Environment terminated - showing cooldown message");
+
+            UI.setAddTerminalButtonState(false);
+
+            if (jsonData.cooldown) {
+              const formattedTime = jsonData.cooldown.formattedTime || 
+                                   Utility.formatDate(new Date(jsonData.cooldown.expiryTimestamp));
+              UI.showCooldownMessage(tabId, formattedTime);
+
+              // Clear auth data on session termination
+              Auth.clearAuthData();
+
+              // Close all connections to prevent further attempts
+              setTimeout(() => {
+                // Remove onclose handlers
+                Object.keys(state.websockets).forEach(id => {
+                  if (state.websockets[id]) {
+                    state.websockets[id].onclose = null;
+                  }
+                });
+                
+                this.closeAllConnections();
+              }, 200);
+            }
+            break;
+            
+          case 'closed':
+            Utility.log('SSH connection closed', 'info');
+            break;
+        }
+      } catch (error) {
+        // Not JSON, treat as raw data
+        if (state.terminals[tabId]) {
+          state.terminals[tabId].write(event.data);
+        }
+      }
+    },
     
     /**
      * Close all active WebSocket connections
      */
-    function closeAllConnections() {
+    closeAllConnections() {
       Object.keys(state.websockets).forEach(tabId => {
         if (state.websockets[tabId]) {
           try {
@@ -401,75 +829,28 @@
         }
       });
     }
-    
-    /**
-     * Check for existing authentication
-     * @returns {boolean} Authentication status
-     */
-    function checkExistingAuth() {
+  };
 
-      // Check for existing authentication in localStorage
-      const storedToken = localStorage.getItem('terminal_auth_token');
-      const storedProfile = localStorage.getItem('terminal_user_profile');
-      
-      // Also check cookie
-      const cookieToken = getAuthTokenFromCookie();
-      
-      // If we have a stored profile and either token, consider authenticated
-      if (storedProfile && (storedToken || cookieToken)) {
-        try {
-          const profile = JSON.parse(storedProfile);
-          
-          if (profile && profile.login && profile.login !== '') {
-            console.log('Found valid profile in storage:', profile.login);
-            
-            // Use whichever token we found
-            const token = storedToken || cookieToken;
-            
-            // Set auth state
-            state.auth.token = token;
-            state.auth.userProfile = profile;
-            state.auth.isAuthenticated = true;
-            
-            // Update UI
-            updateAuthUI();
-            
-            return true;
-          }
-        } catch (e) {
-          console.error('Error parsing stored profile:', e);
-        }
-      }
-      
-      // If we have a cookie token but no stored token, validate it
-      if (cookieToken && !storedToken) {
-        validateTokenFromCookie();
-        return false; // Return false since validation is async
-      }
-      
-      return false;
-    }
-    
-    //=============================================================================
-    // TERMINAL MANAGEMENT
-    //=============================================================================
-    
+  //=============================================================================
+  // TERMINAL MODULE - Terminal management 
+  //=============================================================================
+  const TerminalManager = {
     /**
      * Create a new terminal tab
      */
-    function createNewTerminalTab() {
+    createNewTerminalTab() {
       // Get current tab count
       const tabsContainer = document.querySelector('.terminal-tabs-list');
       const existingTabs = tabsContainer.querySelectorAll('.terminal-tab');
       const currentTabCount = existingTabs.length;
       
-      // Check if we're at the maximum number of tabs (3)
+      // Check if we're at the maximum number of tabs (4)
       if (currentTabCount >= 4) {
-        log('Maximum number of terminals reached (4)', 'error');
+        Utility.log('Maximum number of terminals reached (4)', 'error');
         return;
       }
       
-      // Generate new tab ID (will be 2 or 3 based on existing tabs)
+      // Generate new tab ID
       const newTabId = (currentTabCount + 1).toString();
       
       // Create tab element
@@ -496,22 +877,22 @@
       }
 
       // Create terminal container
-      createTerminalContainer(newTabId);
+      this.createTerminalContainer(newTabId);
       
       // Add click event to new tab
       newTab.addEventListener('click', function() {
-        switchTab(newTabId);
+        UI.switchTab(newTabId);
       });
       
       // Switch to the new tab
-      switchTab(newTabId);
-    }
+      UI.switchTab(newTabId);
+    },
 
     /**
      * Create a new terminal container
      * @param {string} tabId - Tab identifier
      */
-    function createTerminalContainer(tabId) {
+    createTerminalContainer(tabId) {
       // Check if container already exists
       if (document.getElementById(`terminal-container-${tabId}`)) {
         return;
@@ -528,18 +909,18 @@
       newContainer.style.display = 'none';
       
       // Add container to wrapper
-      const wrapper = getElement('terminalWrapper');
-      const statusPanel = getElement('connection-status');
+      const wrapper = Utility.getElement('terminalWrapper');
+      const statusPanel = Utility.getElement('connection-status');
       if (wrapper && statusPanel) {
         wrapper.insertBefore(newContainer, statusPanel);
       }
-    }
+    },
 
     /**
      * Initialize terminal for a specific tab
      * @param {string} tabId - Tab identifier
      */
-    function initializeTerminal(tabId) {
+    initializeTerminal(tabId) {
       console.log(`Initializing terminal for tab ${tabId}...`);
       
       // Only initialize if authenticated
@@ -548,7 +929,7 @@
         return;
       }
       
-      var container = getElement(`terminal-container-${tabId}`);
+      var container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) {
         console.error(`Terminal container for tab ${tabId} not found`);
         return;
@@ -577,8 +958,8 @@
         },
         fontFamily: 'monospace',
         fontSize: 14,
-        cols: CONFIG.DEFAULT_COLS,
-        rows: CONFIG.DEFAULT_ROWS,
+        cols: window.CONFIG.DEFAULT_COLS,
+        rows: window.CONFIG.DEFAULT_ROWS,
         scrollback: 1000,
         convertEol: true,
         disableStdin: false
@@ -594,17 +975,17 @@
       state.terminals[tabId].open(container);
       
       // Initial resize
-      setTimeout(() => resizeTerminal(tabId), 100);
+      setTimeout(() => this.resizeTerminal(tabId), 100);
       
       // Set up data handler
-      setupTerminalDataHandler(tabId);
-    }
+      this.setupTerminalDataHandler(tabId);
+    },
     
     /**
      * Setup terminal data handler for sending user input to server
      * @param {string} tabId - Tab identifier
      */
-    function setupTerminalDataHandler(tabId) {
+    setupTerminalDataHandler(tabId) {
       if (!state.terminals[tabId] || !state.websockets[tabId]) return;
       
       state.terminals[tabId].onData(function(data) {
@@ -615,15 +996,232 @@
           }));
         }
       });
+    },
+    
+    /**
+     * Initialize and connect terminal
+     * @param {string} tabId - Tab identifier
+     * @param {boolean} checkExistingSession - Whether to force check for existing sessions
+     */
+    initializeAndConnectTerminal(tabId, checkExistingSession = false) {
+      // Prevent multiple simultaneous connection attempts
+      if (connectionInProgress) {
+        return;
+      }
+      
+      connectionInProgress = true;
+
+      if (!state.auth.isAuthenticated) {
+        console.error('Cannot connect: Not authenticated');
+        return;
+      }
+      
+      // Show loading state
+      UI.showTerminalLoading(tabId);
+      
+      // Connect to WebSocket
+      Connection.connectWebSocket(tabId, checkExistingSession)
+      .finally(() => {
+        // Reset flag to allow future connection attempts
+        setTimeout(() => {
+          connectionInProgress = false;
+        }, 1000);
+      });
+    },
+    
+    /**
+     * Resize terminal
+     * @param {string} tabId - Tab identifier
+     */
+    resizeTerminal(tabId) {
+      if (!state.terminals[tabId] || !state.fitAddons[tabId]) return;
+      
+      try {
+        // Resize the terminal to fit its container
+        state.fitAddons[tabId].fit();
+        
+        // Send the new size to the server if connected
+        if (state.websockets[tabId] && state.websockets[tabId].readyState === WebSocket.OPEN) {
+          const cols = Math.max(state.terminals[tabId].cols, window.CONFIG.DEFAULT_COLS);
+          const rows = Math.max(state.terminals[tabId].rows, window.CONFIG.DEFAULT_ROWS);
+          
+          state.websockets[tabId].send(JSON.stringify({
+            type: 'resize',
+            cols: cols,
+            rows: rows
+          }));
+        }
+      } catch (e) {
+        console.error(`Error resizing terminal ${tabId}:`, e);
+      }
     }
+  };
+
+  //=============================================================================
+  // UI MODULE - Interface management
+  //=============================================================================
+  const UI = {
+    /**
+     * Show terminal UI
+     */
+    showTerminal() {
+      state.isTerminalVisible = true;
+      
+      const wrapper = Utility.getElement('terminalWrapper');
+      if (!wrapper) return;
+      
+      // Show the terminal wrapper
+      wrapper.style.display = 'flex';
+      wrapper.style.bottom = '0px';
+      
+      // Show/hide UI elements based on authentication status
+      const loginContainer = Utility.getElement('login-container');
+      const tabsContainer = Utility.getElement('terminal-tabs-container');
+      const terminalContainer = Utility.getElement(`terminal-container-${state.activeTabId}`);
+      
+      if (state.auth.isAuthenticated) {
+        // When authenticated, show terminal UI
+        if (loginContainer) loginContainer.style.display = 'none';
+        if (tabsContainer) tabsContainer.style.display = 'flex';
+        if (terminalContainer) terminalContainer.style.display = 'block';
+        
+        // Check if there's already an active connection for this tab
+        const hasActiveConnection = state.websockets[state.activeTabId] && 
+                                  state.websockets[state.activeTabId].readyState === WebSocket.OPEN;
+        
+        // Only initialize a new connection if there isn't one already
+        if (!hasActiveConnection) {
+          // Only try reconnecting if we have a terminal
+          if (state.terminals[state.activeTabId]) {
+            // Check if terminal has content - if yes, just resize, don't reconnect
+            if (state.terminals[state.activeTabId].rows > 0) {
+              // Terminal exists and has content, just resize it
+              setTimeout(() => TerminalManager.resizeTerminal(state.activeTabId), 50);
+            } else {
+              // Initialize connection
+              TerminalManager.initializeAndConnectTerminal(state.activeTabId);
+            }
+          } else {
+            // No terminal exists, create one
+            TerminalManager.initializeAndConnectTerminal(state.activeTabId);
+          }
+        } else {
+          // We have an active connection, just resize the terminal
+          setTimeout(() => TerminalManager.resizeTerminal(state.activeTabId), 50);
+        }
+      } else {
+        // When not authenticated, show login UI
+        if (loginContainer) {
+          loginContainer.style.display = 'flex';
+        }
+        if (tabsContainer) tabsContainer.style.display = 'none';
+        if (terminalContainer) terminalContainer.style.display = 'none';
+      }
+    },
+    
+    /**
+     * Hide terminal UI
+     */
+    hideTerminal() {
+      state.isTerminalVisible = false;
+      
+      const wrapper = Utility.getElement('terminalWrapper');
+      if (!wrapper) return;
+      
+      wrapper.style.bottom = '-' + wrapper.offsetHeight + 'px';
+    },
+    
+    /**
+     * Toggle terminal visibility
+     */
+    toggleTerminal() {
+      if (state.isTerminalVisible) {
+        this.hideTerminal();
+      } else {
+        this.showTerminal();
+      }
+    },
+    
+    /**
+     * Switch to a different terminal tab
+     * @param {string} tabId - Tab identifier
+     */
+    switchTab(tabId) {
+      // Only allow tab switching if authenticated
+      if (!state.auth.isAuthenticated) return;
+      
+      // Update active tab
+      state.activeTabId = tabId;
+      
+      // Update tab UI
+      document.querySelectorAll('.terminal-tab').forEach(function(tab) {
+        tab.classList.remove('active-tab');
+        tab.style.backgroundColor = '#222';
+      });
+      
+      const activeTabElement = Utility.getElement(`terminal-tab-${tabId}`);
+      if (activeTabElement) {
+        activeTabElement.classList.add('active-tab');
+        activeTabElement.style.backgroundColor = '#444';
+      }
+      
+      // Update terminal containers visibility
+      document.querySelectorAll('.terminal-container').forEach(function(container) {
+        container.style.display = 'none';
+      });
+      
+      const activeContainer = Utility.getElement(`terminal-container-${tabId}`);
+      if (activeContainer) {
+        activeContainer.style.display = 'block';
+      }
+      
+      // Initialize terminal if it doesn't exist
+      if (!state.terminals[tabId]) {
+        if (state.websockets[tabId] && state.websockets[tabId].readyState === WebSocket.OPEN) {
+          // If already connected, initialize terminal
+          TerminalManager.initializeTerminal(tabId);
+        } else {
+          // Otherwise connect to WebSocket
+          TerminalManager.initializeAndConnectTerminal(tabId);
+        }
+      } else {
+        // Terminal exists, just resize it
+        setTimeout(() => TerminalManager.resizeTerminal(tabId), 50);
+      }
+    },
+    
+    /**
+     * Set the add terminal button state
+     * @param {boolean} enabled - Whether the button should be enabled
+     */
+    setAddTerminalButtonState(enabled) {
+      const addButton = Utility.getElement('add-terminal-tab');
+      if (!addButton) return;
+      
+      if (enabled) {
+        // Enable the button
+        addButton.style.opacity = '1';
+        addButton.style.cursor = 'pointer';
+        addButton.style.backgroundColor = '#333';
+        addButton.style.borderColor = '#555';
+        addButton.disabled = false;
+      } else {
+        // Disable the button
+        addButton.style.opacity = '0.5';
+        addButton.style.cursor = 'not-allowed';
+        addButton.style.backgroundColor = '#222';
+        addButton.style.borderColor = '#444';
+        addButton.disabled = true;
+      }
+    },
     
     /**
      * Show loading state for terminal
      * @param {string} tabId - Tab identifier
      * @param {string} message - Message to display
      */
-    function showTerminalLoading(tabId, message = 'Connecting to your environment...') {
-      const container = getElement(`terminal-container-${tabId}`);
+    showTerminalLoading(tabId, message = 'Connecting to your environment...') {
+      const container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) return;
       
       container.innerHTML = `
@@ -643,19 +1241,22 @@
           </span>
         </div>
       `;
-    }
+    },
     
     /**
      * Show cooldown message in terminal
      * @param {string} tabId - Tab identifier
      * @param {string} formattedTime - Time when cooldown ends
      */
-    function showCooldownMessage(tabId, formattedTime) {
-      const container = getElement(`terminal-container-${tabId}`);
+    showCooldownMessage(tabId, formattedTime) {
+      // Always clear auth data when showing cooldown message
+      Auth.clearAuthData();
+
+      const container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) return;
       
       // Hide the tabs container during cooldown
-      const tabsContainer = getElement('terminal-tabs-container');
+      const tabsContainer = Utility.getElement('terminal-tabs-container');
       if (tabsContainer) {
         tabsContainer.style.display = 'none';
       }
@@ -692,20 +1293,18 @@
           </span>
         </div>
       `;
-      
-      //updateStatusPanel(`Session expired. Available at ${formattedTime}`, 'error');
-    }
+    },
     
     /**
      * Show UI after cooldown has ended
      * @param {string} tabId - Tab identifier
      */
-    function showReconnectUI(tabId) {
-      const container = getElement(`terminal-container-${tabId}`);
+    showReconnectUI(tabId) {
+      const container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) return;
       
       // Keep tabs hidden until user reconnects
-      const tabsContainer = getElement('terminal-tabs-container');
+      const tabsContainer = Utility.getElement('terminal-tabs-container');
       if (tabsContainer) {
         tabsContainer.style.display = 'none';
       }
@@ -733,7 +1332,7 @@
       `;
       
       // Add click handler for reconnect button
-      const reconnectButton = getElement('reconnect-button');
+      const reconnectButton = Utility.getElement('reconnect-button');
       if (reconnectButton) {
         reconnectButton.addEventListener('click', function() {
           // Show tabs when reconnecting
@@ -742,24 +1341,24 @@
           }
           
           // Initialize terminal and connect
-          initializeAndConnectTerminal(tabId);
+          TerminalManager.initializeAndConnectTerminal(tabId);
         });
       }
-    }
-
+    },
+    
     /**
      * Show message when connection dies unexpectedly
      * @param {string} tabId - Tab identifier
      */
-    function showConnectionFailurePrompt(tabId) {
-      const container = getElement(`terminal-container-${tabId}`);
+    showConnectionFailurePrompt(tabId) {
+      const container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) return;
       
       // Clear authentication data before showing the prompt
-      clearAuthData();
+      Auth.clearAuthData();
       
       // Hide the tabs container
-      const tabsContainer = getElement('terminal-tabs-container');
+      const tabsContainer = Utility.getElement('terminal-tabs-container');
       if (tabsContainer) {
         tabsContainer.style.display = 'none';
       }
@@ -799,465 +1398,20 @@
       `;
       
       // Add click handler for reload button
-      const reloadButton = getElement('reload-page-button');
+      const reloadButton = Utility.getElement('reload-page-button');
       if (reloadButton) {
         reloadButton.addEventListener('click', function() {
           window.location.reload();
         });
       }
-    }
-    
-    /**
-     * Initialize and connect terminal
-     * @param {string} tabId - Tab identifier
-     * @param {boolean} checkExistingSession - Whether to force check for existing sessions
-     */
-    function initializeAndConnectTerminal(tabId, checkExistingSession = false) {
-      // Prevent multiple simultaneous connection attempts
-      if (connectionInProgress) {
-        //console.log("Connection already in progress, skipping duplicate attempt");
-        return;
-      }
-      
-      connectionInProgress = true;
-
-      if (!state.auth.isAuthenticated) {
-        console.error('Cannot connect: Not authenticated');
-        return;
-      }
-      
-      // Show loading state
-      showTerminalLoading(tabId);
-      //updateStatusPanel('Connecting to server...', 'info');
-      
-      // Connect to WebSocket
-      connectWebSocket(tabId, checkExistingSession)
-      .finally(() => {
-        // Reset flag to allow future connection attempts
-        setTimeout(() => {
-          connectionInProgress = false;
-        }, 1000);
-      });
-    }
-    
-    /**
-     * Connect to WebSocket server with JWT authentication
-     * @param {string} tabId - Tab identifier
-     * @param {boolean} checkExistingSession - Force check for existing sessions
-     */
-    function connectWebSocket(tabId, checkExistingSession = false) {
-      return new Promise((resolve, reject) => {
-        
-        // Close existing connection if any
-        if (state.websockets[tabId]) {
-          try {
-            state.websockets[tabId].close();
-          } catch (e) {
-            console.error(`Error closing existing websocket for tab ${tabId}:`, e);
-          }
-        }
-        
-        // Get auth token - try all possible storage locations
-        let authToken = getAuthTokenFromCookie();
-        
-        // If not in cookie, try localStorage backups
-        if (!authToken) {
-          authToken = localStorage.getItem('terminal_auth_token');
-        }
-        
-        if (!authToken) {
-          log('Cannot connect: Missing authentication token', 'error');
-          reject(new Error('Missing authentication token'));
-          return;
-        }
-        
-        // Get user ID for connection
-        const userId = state.auth.userProfile?.login;
-        const terminalId = 'terminal_' + tabId + '_' + generateUniqueId();
-        
-        // Create connection URL with the JWT token parameter
-        let wsUrl = `${CONFIG.WS_URL}?token=${encodeURIComponent(authToken)}&terminalid=${encodeURIComponent(terminalId)}`;
-        
-        // Add flag for forcing session check when logging in via GitHub
-        if (checkExistingSession) {
-          wsUrl += '&checksession=true';
-        }
-        
-        // Create WebSocket connection
-        try {
-          state.websockets[tabId] = new WebSocket(wsUrl);
-          
-          // Set a connection timeout
-          const connectionTimeout = setTimeout(function() {
-            if (state.websockets[tabId] && state.websockets[tabId].readyState !== WebSocket.OPEN) {
-              log('Connection timeout. Server not responding.', 'error');
-              if (state.websockets[tabId]) state.websockets[tabId].close();
-              reject(new Error('Connection timeout'));
-            }
-          }, CONFIG.CONNECTION_TIMEOUT);
-          
-          // Set up event handlers that resolve/reject the promise
-          state.websockets[tabId].onopen = function() {
-            clearTimeout(connectionTimeout);
-            log('WebSocket connection established', 'info');
-            
-            // Send auth message to start the terminal session
-            state.websockets[tabId].send(JSON.stringify({
-              type: 'auth'
-            }));
-            
-            resolve();
-          };
-          
-          // Setup message handler
-          state.websockets[tabId].onmessage = function(event) {
-            handleWebSocketMessage(event, tabId);
-          };
-
-          // Setup error handler
-          state.websockets[tabId].onerror = function(error) {
-            clearTimeout(connectionTimeout);
-            log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
-            reject(error);
-          };
-          
-          // Setup close handler
-          state.websockets[tabId].onclose = function(event) {
-            clearTimeout(connectionTimeout);
-            
-            if (event.wasClean) {
-              log(`Connection closed cleanly, code: ${event.code}`, 'info');
-            } else {
-              log('Connection died unexpectedly', 'error');
-
-              // Show connection failure prompt
-              showConnectionFailurePrompt(tabId);
-            }
-            
-            // Only reject if the connection hasn't been established yet
-            if (state.websockets[tabId].readyState !== WebSocket.OPEN) {
-              reject(new Error('Connection closed'));
-            }
-          };
-          
-        } catch (error) {
-          log(`Error creating WebSocket: ${error.message}`, 'error');
-          reject(error);
-        }
-      });
-    }
-    
-    /**
-     * Handle WebSocket message
-     * @param {MessageEvent} event - WebSocket message event
-     * @param {string} tabId - Tab identifier
-     */
-    function handleWebSocketMessage(event, tabId) {
-      try {
-        // Log message received by server (may be useful for debug)
-        //console.log(event);
-
-        // Try to parse as JSON
-        let jsonData = JSON.parse(event.data);
-
-        switch (jsonData.type) {
-          case 'vm_creating':
-            showTerminalLoading(tabId, 'Creating your environment...');
-            log('Your environment is being created. Please wait...', 'info');
-
-            // Disable add terminal button while VM is creating
-            setAddTerminalButtonState(false);
-            break;
-            
-          case 'vm_ready':
-            log('Your environment is ready!', 'success');
-            
-            // Show tabs container when VM is ready
-            const tabsContainer = getElement('terminal-tabs-container');
-            if (tabsContainer && state.auth.isAuthenticated) {
-              tabsContainer.style.display = 'flex';
-            }
-
-            // Enable add terminal button when VM is ready
-            setAddTerminalButtonState(true);
-
-            // Initialize proper terminal if needed
-            if (!state.terminals[tabId]) {
-              initializeTerminal(tabId);
-            }
-            break;
-            
-          case 'connected':
-            log('SSH connection established', 'success');
-            break;
-            
-          case 'data':
-            if (state.terminals[tabId]) state.terminals[tabId].write(jsonData.data);
-            break;
-            
-          case 'error':
-            log(`Error: ${jsonData.message}`, 'error');
-            setAddTerminalButtonState(false);
-
-            if (jsonData.cooldown) {
-              console.log("Cooldown received - showing message");
-
-              const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
-              
-              // Show cooldown message before closing connections
-              showCooldownMessage(tabId, formattedTime);
-
-              // Clear auth data on session expiration
-              if (jsonData.message && jsonData.message.includes('session expired')) {
-                clearAuthData();
-              }
-
-              // Disconnect all terminals
-              setTimeout(() => {
-                // Remove onclose handlers to avoid errors
-                Object.keys(state.websockets).forEach(id => {
-                  if (state.websockets[id]) {
-                    state.websockets[id].onclose = null;
-                  }
-                });
-                
-                // Then close all connections
-                closeAllConnections();
-              }, 200);
-            }
-            break;
-            
-          // Handle session termination with cooldown  
-          case 'environment_terminated':
-            console.log("Environment terminated - showing cooldown message");
-
-            setAddTerminalButtonState(false);
-
-            if (jsonData.cooldown) {
-              const formattedTime = jsonData.cooldown.formattedTime || formatDate(new Date(jsonData.cooldown.expiryTimestamp));
-              showCooldownMessage(tabId, formattedTime);
-
-              // Clear auth data on session termination
-              clearAuthData();
-
-              // Close all connections to prevent further attempts
-              setTimeout(() => {
-                // Remove onclose handlers
-                Object.keys(state.websockets).forEach(id => {
-                  if (state.websockets[id]) {
-                    state.websockets[id].onclose = null;
-                  }
-                });
-                
-                closeAllConnections();
-              }, 200);
-            }
-            break;
-            
-          case 'closed':
-            log('SSH connection closed', 'info');
-            break;
-        }
-      } catch (error) {
-        // Not JSON, treat as raw data
-        if (state.terminals[tabId]) {
-          state.terminals[tabId].write(event.data);
-        }
-      }
-    }
-    
-    /**
-     * Resize terminal
-     * @param {string} tabId - Tab identifier
-     */
-    function resizeTerminal(tabId) {
-      if (!state.terminals[tabId] || !state.fitAddons[tabId]) return;
-      
-      try {
-        // Resize the terminal to fit its container
-        state.fitAddons[tabId].fit();
-        
-        // Send the new size to the server if connected
-        if (state.websockets[tabId] && state.websockets[tabId].readyState === WebSocket.OPEN) {
-          const cols = Math.max(state.terminals[tabId].cols, CONFIG.DEFAULT_COLS);
-          const rows = Math.max(state.terminals[tabId].rows, CONFIG.DEFAULT_ROWS);
-          
-          state.websockets[tabId].send(JSON.stringify({
-            type: 'resize',
-            cols: cols,
-            rows: rows
-          }));
-        }
-      } catch (e) {
-        console.error(`Error resizing terminal ${tabId}:`, e);
-      }
-    }
-    
-    //=============================================================================
-    // UI MANAGEMENT
-    //=============================================================================
-    
-    /**
-     * Show terminal UI
-     */
-    function showTerminal() {
-        state.isTerminalVisible = true;
-        
-        const wrapper = getElement('terminalWrapper');
-        if (!wrapper) return;
-        
-        // Show the terminal wrapper
-        wrapper.style.display = 'flex';
-        wrapper.style.bottom = '0px';
-        
-        // Show/hide UI elements based on authentication status
-        const loginContainer = getElement('login-container');
-        const tabsContainer = getElement('terminal-tabs-container');
-        const terminalContainer = getElement(`terminal-container-${state.activeTabId}`);
-        
-        if (state.auth.isAuthenticated) {
-            // When authenticated, show terminal UI
-            if (loginContainer) loginContainer.style.display = 'none';
-            if (tabsContainer) tabsContainer.style.display = 'flex';
-            if (terminalContainer) terminalContainer.style.display = 'block';
-            
-            // Check if there's already an active connection for this tab
-            const hasActiveConnection = state.websockets[state.activeTabId] && 
-                                      state.websockets[state.activeTabId].readyState === WebSocket.OPEN;
-            
-            // Only initialize a new connection if there isn't one already
-            if (!hasActiveConnection) {
-              // Only try reconnecting if we have a terminal
-              if (state.terminals[state.activeTabId]) {
-                // Check if terminal has content - if yes, just resize, don't reconnect
-                if (state.terminals[state.activeTabId].rows > 0) {
-                  // Terminal exists and has content, just resize it
-                  setTimeout(() => resizeTerminal(state.activeTabId), 50);
-                } else {
-                  // Initialize connection
-                  initializeAndConnectTerminal(state.activeTabId);
-                }
-              } else {
-                // No terminal exists, create one
-                initializeAndConnectTerminal(state.activeTabId);
-              }
-            } else {
-              // We have an active connection, just resize the terminal
-              setTimeout(() => resizeTerminal(state.activeTabId), 50);
-            }
-        } else {
-            // When not authenticated, show login UI
-            if (loginContainer) {
-            loginContainer.style.display = 'flex';
-            console.log('Showing login container');
-            }
-            if (tabsContainer) tabsContainer.style.display = 'none';
-            if (terminalContainer) terminalContainer.style.display = 'none';
-        }
-    }
-    
-    /**
-     * Hide terminal UI
-     */
-    function hideTerminal() {
-      state.isTerminalVisible = false;
-      
-      const wrapper = getElement('terminalWrapper');
-      if (!wrapper) return;
-      
-      wrapper.style.bottom = '-' + wrapper.offsetHeight + 'px';
-    }
-    
-    /**
-     * Set the add terminal button state
-     * @param {boolean} enabled - Whether the button should be enabled
-     */
-    function setAddTerminalButtonState(enabled) {
-      const addButton = getElement('add-terminal-tab');
-      if (!addButton) return;
-      
-      if (enabled) {
-        // Enable the button
-        addButton.style.opacity = '1';
-        addButton.style.cursor = 'pointer';
-        addButton.style.backgroundColor = '#333';
-        addButton.style.borderColor = '#555';
-        addButton.disabled = false;
-      } else {
-        // Disable the button
-        addButton.style.opacity = '0.5';
-        addButton.style.cursor = 'not-allowed';
-        addButton.style.backgroundColor = '#222';
-        addButton.style.borderColor = '#444';
-        addButton.disabled = true;
-      }
-    }
-
-    /**
-     * Toggle terminal visibility
-     */
-    function toggleTerminal() {
-      if (state.isTerminalVisible) {
-        hideTerminal();
-      } else {
-        showTerminal();
-      }
-    }
-    
-    /**
-     * Switch to a different terminal tab
-     * @param {string} tabId - Tab identifier
-     */
-    function switchTab(tabId) {
-      // Only allow tab switching if authenticated
-      if (!state.auth.isAuthenticated) return;
-      
-      // Update active tab
-      state.activeTabId = tabId;
-      
-      // Update tab UI
-      document.querySelectorAll('.terminal-tab').forEach(function(tab) {
-        tab.classList.remove('active-tab');
-        tab.style.backgroundColor = '#222';
-      });
-      
-      const activeTabElement = getElement(`terminal-tab-${tabId}`);
-      if (activeTabElement) {
-        activeTabElement.classList.add('active-tab');
-        activeTabElement.style.backgroundColor = '#444';
-      }
-      
-      // Update terminal containers visibility
-      document.querySelectorAll('.terminal-container').forEach(function(container) {
-        container.style.display = 'none';
-      });
-      
-      const activeContainer = getElement(`terminal-container-${tabId}`);
-      if (activeContainer) {
-        activeContainer.style.display = 'block';
-      }
-      
-      // Initialize terminal if it doesn't exist
-      if (!state.terminals[tabId]) {
-        if (state.websockets[tabId] && state.websockets[tabId].readyState === WebSocket.OPEN) {
-          // If already connected, initialize terminal
-          initializeTerminal(tabId);
-        } else {
-          // Otherwise connect to WebSocket
-          initializeAndConnectTerminal(tabId);
-        }
-      } else {
-        // Terminal exists, just resize it
-        setTimeout(() => resizeTerminal(tabId), 50);
-      }
-    }
+    },
     
     /**
      * Setup vertical resize functionality
      * @param {HTMLElement} resizeHandle - Resize handle element
      * @param {HTMLElement} wrapper - Terminal wrapper element
      */
-    function setupVerticalResize(resizeHandle, wrapper) {
+    setupVerticalResize(resizeHandle, wrapper) {
       if (!resizeHandle || !wrapper) return;
       
       let isResizing = false;
@@ -1277,240 +1431,87 @@
         
         const deltaY = startY - e.clientY;
         const newHeight = Math.min(
-        Math.max(startHeight + deltaY, CONFIG.MIN_HEIGHT),
-        CONFIG.MAX_HEIGHT
-      );
-      
-      // Update wrapper height
-      wrapper.style.height = newHeight + 'px';
-      
-      // If terminal is visible, update bottom position to maintain position
-      if (state.isTerminalVisible) {
-        wrapper.style.bottom = '0px';
-      }
-      
-      // Resize all terminals to match new height
-      Object.keys(state.terminals).forEach(id => {
-        if (state.terminals[id] && state.fitAddons[id]) {
-          state.fitAddons[id].fit();
-        }
-      });
-    });
-    
-    document.addEventListener('mouseup', function() {
-      if (isResizing) {
-        isResizing = false;
-        wrapper.style.transition = `bottom ${CONFIG.TERMINAL_TRANSITION_SPEED} ease-in-out`;
-        document.body.style.userSelect = '';
+          Math.max(startHeight + deltaY, window.CONFIG.MIN_HEIGHT),
+          CONFIG.MAX_HEIGHT
+        );
         
-        // If terminal is hidden, update the bottom position
-        if (!state.isTerminalVisible) {
-          wrapper.style.bottom = '-' + wrapper.offsetHeight + 'px';
+        // Update wrapper height
+        wrapper.style.height = newHeight + 'px';
+        
+        // If terminal is visible, update bottom position to maintain position
+        if (state.isTerminalVisible) {
+          wrapper.style.bottom = '0px';
         }
         
-        // Apply terminal resize on all tabs
+        // Resize all terminals to match new height
         Object.keys(state.terminals).forEach(id => {
           if (state.terminals[id] && state.fitAddons[id]) {
-            resizeTerminal(id);
+            state.fitAddons[id].fit();
           }
         });
-      }
-    });
-  }
-  
-  /**
-   * Setup horizontal drag functionality
-   * @param {HTMLElement} header - Terminal header element
-   * @param {HTMLElement} wrapper - Terminal wrapper element
-   */
-  function setupHorizontalDrag(header, wrapper) {
-    if (!header || !wrapper) return;
-    
-    let isDragging = false;
-    let dragOffsetX = 0;
-    
-    header.addEventListener('mousedown', function(e) {
-      // Don't initiate drag if clicking on buttons or tabs
-      if (e.target !== header && (e.target.tagName === 'BUTTON' || e.target.classList.contains('terminal-tab'))) {
-        return;
-      }
-      
-      isDragging = true;
-      dragOffsetX = e.clientX - wrapper.getBoundingClientRect().left;
-      wrapper.style.transition = 'none';
-      document.body.style.userSelect = 'none';
-    });
-    
-    document.addEventListener('mousemove', function(e) {
-      if (!isDragging) return;
-      
-      const x = e.clientX - dragOffsetX;
-      const maxWidth = window.innerWidth - wrapper.offsetWidth;
-      
-      if (x >= 0 && x <= maxWidth) {
-        wrapper.style.left = x + 'px';
-      }
-    });
-    
-    document.addEventListener('mouseup', function() {
-      if (isDragging) {
-        isDragging = false;
-        wrapper.style.transition = 'left 0.3s ease-in-out';
-        document.body.style.userSelect = '';
-      }
-    });
-  }
-  
-  //=============================================================================
-  // INITIALIZATION
-  //=============================================================================
-  
-  /**
-   * Initialize the application
-   */
-  function initialize() {
-    //console.log('Terminal script loaded');
-    
-    // Check for existing authentication
-    const existingAuth = checkExistingAuth();
-    
-    // Handle OAuth callback
-    handleOAuthCallback();
-    
-    // Pre-create terminal container for tab 1 (if not already in HTML)
-    if (!getElement('terminal-container-1')) {
-      createTerminalContainer('1');
-    }
-
-    // Initialize add terminal button as disabled
-    setAddTerminalButtonState(false);
-
-    // Setup event listeners
-    setupEventListeners();
-    
-    // Setup window resize handler
-    window.addEventListener('resize', function() {
-      // Resize all terminals when window is resized
-      if (state.isTerminalVisible) {
-        Object.keys(state.terminals).forEach(id => {
-          if (state.terminals[id] && state.fitAddons[id]) {
-            resizeTerminal(id);
-          }
-        });
-      }
-    });
-
-    // Add window unload handler to clean up connections
-    window.addEventListener('beforeunload', function() {
-      // Close all connections cleanly before page unloads
-      closeAllConnections();
-      
-      // Clear all stored terminal IDs
-      localStorage.removeItem('terminal_active_tabs');
-    });
-    
-    // If authenticated, show terminal
-    if (existingAuth) {
-      setTimeout(() => showTerminal(), 500);
-    } else {
-      // Show login container
-      const loginContainer = getElement('login-container');
-      if (loginContainer) {
-        loginContainer.style.display = 'block';
-      }
-    }
-  }
-  
-  /**
-   * Setup event listeners
-   */
-  function setupEventListeners() {
-    // Get elements
-    const elements = {
-      toggleButton: getElement('terminalToggle'),
-      wrapper: getElement('terminalWrapper'),
-      minimizeButton: getElement('terminalMinimize'),
-      closeButton: getElement('terminalClose'),
-      resizeHandle: getElement('terminalResizeHandle'),
-      header: getElement('terminalHeader'),
-      githubLoginButton: getElement('github-login-button'),
-      tab1: getElement('terminal-tab-1'),
-      tab2: getElement('terminal-tab-2')
-    };
-    
-    // Terminal toggle button
-    if (elements.toggleButton) {
-      elements.toggleButton.addEventListener('click', toggleTerminal);
-    }
-    
-    // Terminal minimize button
-    if (elements.minimizeButton) {
-      elements.minimizeButton.addEventListener('click', toggleTerminal);
-    }
-    
-    // Terminal close button
-    if (elements.closeButton) {
-      elements.closeButton.addEventListener('click', function() {
-        closeAllConnections();
-        hideTerminal();
       });
-    }
+      
+      document.addEventListener('mouseup', function() {
+        if (isResizing) {
+          isResizing = false;
+          wrapper.style.transition = `bottom ${window.CONFIG.TERMINAL_TRANSITION_SPEED} ease-in-out`;
+          document.body.style.userSelect = '';
+          
+          // If terminal is hidden, update the bottom position
+          if (!state.isTerminalVisible) {
+            wrapper.style.bottom = '-' + wrapper.offsetHeight + 'px';
+          }
+          
+          // Apply terminal resize on all tabs
+          Object.keys(state.terminals).forEach(id => {
+            if (state.terminals[id] && state.fitAddons[id]) {
+              TerminalManager.resizeTerminal(id);
+            }
+          });
+        }
+      });
+    },
     
-    // GitHub login button
-    if (elements.githubLoginButton) {
-      elements.githubLoginButton.addEventListener('click', initiateGitHubLogin);
-    }
-
-
-    // Add terminal tab button
-    const addTerminalTabButton = getElement('add-terminal-tab');
-    if (addTerminalTabButton) {
-      addTerminalTabButton.addEventListener('click', function() {
-        // Skip if button is disabled
-        if (addTerminalTabButton.disabled) {
+    /**
+     * Setup horizontal drag functionality
+     * @param {HTMLElement} header - Terminal header element
+     * @param {HTMLElement} wrapper - Terminal wrapper element
+     */
+    setupHorizontalDrag(header, wrapper) {
+      if (!header || !wrapper) return;
+      
+      let isDragging = false;
+      let dragOffsetX = 0;
+      
+      header.addEventListener('mousedown', function(e) {
+        // Don't initiate drag if clicking on buttons or tabs
+        if (e.target !== header && (e.target.tagName === 'BUTTON' || e.target.classList.contains('terminal-tab'))) {
           return;
         }
         
-        if (state.auth.isAuthenticated) {
-          createNewTerminalTab();
-        } else {
-          log('Please login first', 'error');
+        isDragging = true;
+        dragOffsetX = e.clientX - wrapper.getBoundingClientRect().left;
+        wrapper.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+      });
+      
+      document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        
+        const x = e.clientX - dragOffsetX;
+        const maxWidth = window.innerWidth - wrapper.offsetWidth;
+        
+        if (x >= 0 && x <= maxWidth) {
+          wrapper.style.left = x + 'px';
+        }
+      });
+      
+      document.addEventListener('mouseup', function() {
+        if (isDragging) {
+          isDragging = false;
+          wrapper.style.transition = 'left 0.3s ease-in-out';
+          document.body.style.userSelect = '';
         }
       });
     }
-
-    // Terminal tabs
-    if (elements.tab1) {
-      elements.tab1.addEventListener('click', function() {
-        switchTab('1');
-      });
-    }
-    
-    if (elements.tab2) {
-      elements.tab2.addEventListener('click', function() {
-        switchTab('2');
-      });
-    }
-    
-    // Setup resize and drag functionality
-    if (elements.resizeHandle && elements.wrapper) {
-      setupVerticalResize(elements.resizeHandle, elements.wrapper);
-    }
-    
-    if (elements.header && elements.wrapper) {
-      setupHorizontalDrag(elements.header, elements.wrapper);
-    }
-    
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-      // Alt+T to toggle terminal
-      if (e.altKey && e.key === 't') {
-        toggleTerminal();
-        e.preventDefault();
-      }
-    });
-  }
-  
-  // Initialize the application when DOM is ready
-  document.addEventListener('DOMContentLoaded', initialize);
-})();
+  };
