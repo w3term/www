@@ -6,17 +6,34 @@
   //=============================================================================
   // CONFIGURATION
   //=============================================================================
+
+
+  // Get current domain and protocol information
+  const currentDomain = window.location.hostname.replace(/^www\./, '');
+  const isSecure = window.location.protocol === 'https:';
+  const wsProtocol = isSecure ? 'wss://' : 'ws://';
+  const httpProtocol = isSecure ? 'https://' : 'http://';
+
+  // For localhost development
+  const isLocalhost = currentDomain === 'localhost' || currentDomain.startsWith('127.0.0.1');
+  
   const CONFIG = {
     // WebSocket settings
-    WS_URL: 'ws://localhost:8081', // Replace with your WebSocket server URL
+    WS_URL: isLocalhost 
+      ? `${wsProtocol}localhost:8081` 
+      : `${wsProtocol}wss.${currentDomain}`,
     
     // GitHub OAuth settings
-    GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv', // Replace with your client ID
-    GITHUB_REDIRECT_URI: 'http://localhost:3000/auth/github/callback',
+    GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv',
+    GITHUB_REDIRECT_URI: isLocalhost
+    ? 'http://localhost:3000/auth/github/callback'
+    : `${httpProtocol}auth.${currentDomain}/auth/github/callback`,
     GITHUB_SCOPE: 'read:user',
     
     // Auth server
-    AUTH_SERVER: 'http://localhost:3000',
+    AUTH_SERVER: isLocalhost
+      ? 'http://localhost:3000'
+      : `${httpProtocol}auth.${currentDomain}`,
     
     // Terminal settings
     DEFAULT_COLS: 120,
@@ -33,12 +50,20 @@
     // UI Settings
     TERMINAL_TRANSITION_SPEED: '0.3s',
     
+    // Environment detection
+    IS_PRODUCTION: !isLocalhost,
+
     // Debug settings
-    DEBUG: true
+    DEBUG: isLocalhost
   };
 
   // Make CONFIG global so it's accessible in all modules and closures
   window.CONFIG = CONFIG;
+
+  // Log configuration in debug mode
+  if (CONFIG.DEBUG) {
+    console.log('Terminal Configuration:', CONFIG);
+  }
 
   //=============================================================================
   // APP INITIALIZATION
