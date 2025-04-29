@@ -4,4 +4,4 @@ COPY . .
 
 RUN ./build.sh && \
     mv terminal.html /usr/share/nginx/html/index.html && \
-    rm index.css index.html index.js
+    rm index.css index.html index.js build.sh delete.sh
