@@ -25,10 +25,9 @@
     
     // GitHub OAuth settings
     GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv',
-    GITHUB_REDIRECT_URI: isLocalhost
-    ? 'http://localhost:3000/auth/github/callback'
-    : `${httpProtocol}auth.${currentDomain}/auth/github/callback`,
+    GITHUB_REDIRECT_URI: isLocalhost ? 'http://localhost:3000/auth/github/callback' : `${httpProtocol}auth.${currentDomain}/auth/github/callback`,
     GITHUB_SCOPE: 'read:user',
+    GITHUB_APP_NAME: 'terminal-test',
     
     // Auth server
     AUTH_SERVER: isLocalhost
@@ -54,7 +53,8 @@
     IS_PRODUCTION: !isLocalhost,
 
     // Debug settings
-    DEBUG: isLocalhost
+    // DEBUG: isLocalhost
+    DEBUG: true
   };
 
   // Make CONFIG global so it's accessible in all modules and closures
@@ -364,14 +364,22 @@
     initiateGitHubLogin() {
       // Save current state to check against CSRF
       const oauthState = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('github_oauth_state', oauthState);
+
+      // Add app name to the state
+      const gitHubAppName = window.CONFIG.GITHUB_APP_NAME;
+      const fullState = `${oauthState}_${gitHubAppName}`;
+
+      // Store the state for CSRF validation
+      localStorage.setItem('github_oauth_state', fullState);
       
       // Build GitHub authorization URL
-      const authUrl = `https://github.com/login/oauth/authorize?client_id=${window.CONFIG.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.CONFIG.GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(window.CONFIG.GITHUB_SCOPE)}&state=${oauthState}`;
+      const authUrl = `https://github.com/login/oauth/authorize?client_id=${window.CONFIG.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.CONFIG.GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(window.CONFIG.GITHUB_SCOPE)}&state=${fullState}`;
       
       // Log debug info
       if (window.CONFIG.DEBUG) {
         console.log('Initiating GitHub OAuth flow');
+        console.log('GitHub App Name:', gitHubAppName);
+        console.log('Full OAuth State:', fullState);
         console.log('GitHub Authorization URL:', authUrl);
       }
       
