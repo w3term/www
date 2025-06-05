@@ -1,6 +1,5 @@
 /**
- * A browser-based terminal interface connecting to remote environments via WebSockets.
- * Organized into logical modules for better maintainability.
+ * Browser-based terminal connecting to remote environments via WebSockets
  */
 (function() {
   //=============================================================================
@@ -14,7 +13,7 @@
   const wsProtocol = isSecure ? 'wss://' : 'ws://';
   const httpProtocol = isSecure ? 'https://' : 'http://';
 
-  // For localhost development
+  // Check if localhost development
   const isLocalhost = currentDomain === 'localhost' || currentDomain.startsWith('127.0.0.1');
   
   const CONFIG = {
@@ -23,11 +22,15 @@
       ? `${wsProtocol}localhost:8081` 
       : `${wsProtocol}wss.${currentDomain}`,
     
-    // GitHub OAuth settings
+    // GitHub OAuth app settings is temporary set to the test environment
     GITHUB_CLIENT_ID: 'Ov23lierUHCC1NsRnWlv',
+    GITHUB_APP_NAME: 'terminal-test',
+
+    // Type of VM to request (may depend of the web client needs)
+    VM_TYPE: 'cka',
+
     GITHUB_REDIRECT_URI: isLocalhost ? 'http://localhost:3000/auth/github/callback' : `${httpProtocol}auth.${currentDomain}/auth/github/callback`,
     GITHUB_SCOPE: 'read:user',
-    GITHUB_APP_NAME: 'terminal-test',
     
     // Auth server
     AUTH_SERVER: isLocalhost
@@ -53,11 +56,10 @@
     IS_PRODUCTION: !isLocalhost,
 
     // Debug settings
-    // DEBUG: isLocalhost
-    DEBUG: true
+    DEBUG: isLocalhost
   };
 
-  // Make CONFIG global so it's accessible in all modules and closures
+  // Make CONFIG global so it's accessible everywhere
   window.CONFIG = CONFIG;
 
   // Log configuration in debug mode
@@ -79,7 +81,7 @@
     // Handle OAuth callback
     Auth.handleOAuthCallback();
     
-    // Pre-create terminal container for tab 1 (if not already in HTML)
+    // Pre-create terminal container for tab 1
     if (!Utility.getElement('terminal-container-1')) {
       TerminalManager.createTerminalContainer('1');
     }
@@ -202,9 +204,8 @@
       UI.setupHorizontalDrag(elements.header, elements.wrapper);
     }
     
-    // Add keyboard shortcuts
+    // Add keyboard shortcuts (Alt+T to toggle terminal)
     document.addEventListener('keydown', function(e) {
-      // Alt+T to toggle terminal
       if (e.altKey && e.key === 't') {
         UI.toggleTerminal();
         e.preventDefault();
@@ -217,7 +218,7 @@
 })();
   
   //=============================================================================
-  // STATE MANAGEMENT - Simplified to essentials
+  // STATE MANAGEMENT
   //=============================================================================
   const state = {
     // Terminal instances
@@ -534,35 +535,6 @@
     },
     
     /**
-     * Logout function
-     */
-    logout() {
-      // Clear auth state
-      state.auth.token = null;
-      state.auth.userProfile = null;
-      state.auth.isAuthenticated = false;
-      
-      // Remove from localStorage
-      localStorage.removeItem('terminal_auth_token');
-      localStorage.removeItem('terminal_user_profile');
-      
-      // Update UI
-      this.updateAuthUI();
-      
-      // Hide terminal
-      UI.hideTerminal();
-      
-      // Show login container
-      const loginContainer = Utility.getElement('login-container');
-      if (loginContainer) {
-        loginContainer.style.display = 'block';
-      }
-      
-      // Close all connections
-      Connection.closeAllConnections();
-    },
-    
-    /**
      * Check for existing authentication
      * @returns {boolean} Authentication status
      */
@@ -644,13 +616,13 @@
           reject(new Error('Missing authentication token'));
           return;
         }
-        
+
         // Get user ID for connection
         const userId = state.auth.userProfile?.login;
         const terminalId = 'terminal_' + tabId + '_' + Utility.generateUniqueId();
         
         // Create connection URL with the JWT token parameter
-        let wsUrl = `${window.CONFIG.WS_URL}?token=${encodeURIComponent(authToken)}&terminalid=${encodeURIComponent(terminalId)}`;
+        let wsUrl = `${window.CONFIG.WS_URL}?token=${encodeURIComponent(authToken)}&terminalid=${encodeURIComponent(terminalId)}&vmtype=${window.CONFIG.VM_TYPE}`;
         
         // Add flag for forcing session check when logging in via GitHub
         if (checkExistingSession) {
@@ -682,7 +654,7 @@
             
             resolve();
           };
-          
+
           // Setup message handler
           state.websockets[tabId].onmessage = function(event) {
             Connection.handleWebSocketMessage(event, tabId);
@@ -690,6 +662,7 @@
 
           // Setup error handler
           state.websockets[tabId].onerror = function(error) {
+            Utility.log('websocket received an error', error);
             clearTimeout(connectionTimeout);
             Utility.log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
             reject(error);
@@ -769,6 +742,35 @@
             Utility.log(`Error: ${jsonData.message}`, 'error');
             UI.setAddTerminalButtonState(false);
 
+            // Handle token expiration
+            if (jsonData.message && jsonData.message.includes('Token expired')) {
+              console.log("Token expired");
+
+              // Clear auth data on session expiration
+              Auth.clearAuthData();
+
+              // Disconnect all terminals
+              setTimeout(() => {
+                // Remove onclose handlers to avoid errors
+                Object.keys(state.websockets).forEach(id => {
+                  if (state.websockets[id]) {
+                    state.websockets[id].onclose = null;
+                  }
+                });
+                
+                // Then close all connections
+                this.closeAllConnections();
+              }, 200);
+            }
+ 
+            // Handle max number of terminals
+            if (jsonData.message && jsonData.message.includes('You have reached the maximum limit')) {
+              console.log("Max number of terminal reached");
+              // Show cooldown message before closing connections
+              UI.showTerminalQuotaMessage(tabId);
+            }
+            
+            // Handle cooldonw
             if (jsonData.cooldown) {
               console.log("Cooldown received - showing message");
 
@@ -796,6 +798,7 @@
                 this.closeAllConnections();
               }, 200);
             }
+
             break;
             
           // Handle session termination with cooldown  
@@ -810,7 +813,7 @@
               UI.showCooldownMessage(tabId, formattedTime);
 
               // Clear auth data on session termination
-              Auth.clearAuthData();
+              //Auth.clearAuthData();
 
               // Close all connections to prevent further attempts
               setTimeout(() => {
@@ -1283,7 +1286,7 @@
      */
     showCooldownMessage(tabId, formattedTime) {
       // Always clear auth data when showing cooldown message
-      Auth.clearAuthData();
+      //Auth.clearAuthData();
 
       const container = Utility.getElement(`terminal-container-${tabId}`);
       if (!container) return;
@@ -1380,6 +1383,39 @@
     },
     
     /**
+     * Show message when max number of terminal reached
+     * (needed when different browsers are used simultaneously)
+     * @param {string} tabId - Tab identifier
+     */
+    showTerminalQuotaMessage(tabId) {
+      const container = Utility.getElement(`terminal-container-${tabId}`);
+      if (!container) return;
+            
+      container.innerHTML = `
+        <div style="
+          position: absolute; 
+          top: 50%; 
+          left: 50%; 
+          transform: translate(-50%, -50%);
+          color: #ff5555;
+          text-align: center;
+          font-family: monospace;
+          font-size: 18px;
+          background-color: rgba(0, 0, 0, 0.85);
+          padding: 20px;
+          border-radius: 8px;
+          width: 80%;
+          max-width: 500px;
+        ">
+          You reached the maximal number of terminals<br>
+          <span style="font-size: 14px; color: #ffffff; margin-top: 10px; display: block;">
+            Are you using multiple browsers simultaneously ?
+          </span>
+        </div>
+      `;
+    },
+
+    /**
      * Show message when connection dies unexpectedly
      * @param {string} tabId - Tab identifier
      */
@@ -1416,27 +1452,8 @@
           <span style="font-size: 14px; color: #ffffff; margin-top: 10px; display: block;">
             Please reload the page to reconnect
           </span>
-          <button id="reload-page-button" style="
-            margin-top: 15px; 
-            padding: 8px 16px; 
-            background: #444; 
-            border: 1px solid #666; 
-            color: white; 
-            cursor: pointer; 
-            border-radius: 3px;
-          ">
-            Reload Now
-          </button>
         </div>
       `;
-      
-      // Add click handler for reload button
-      const reloadButton = Utility.getElement('reload-page-button');
-      if (reloadButton) {
-        reloadButton.addEventListener('click', function() {
-          window.location.reload();
-        });
-      }
     },
     
     /**
