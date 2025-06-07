@@ -5,7 +5,7 @@ stages:
   - build-prod
 
 # Build development version when push on develop branch
-build dev:
+build-dev:
   stage: build-dev
   image: node:18-alpine
   script:
@@ -147,7 +147,7 @@ release:
     - main
 
 # Build production version on each new tag (created by semantic-release)
-build production:
+build-production:
   stage: build-prod
   image: node:18-alpine
   script:
@@ -210,7 +210,7 @@ build production:
     
     # Create production index page with demo
     - |
-      cat > dist/index.html << 'EOF'
+      cat > dist/index.html << EOF
       <!DOCTYPE html>
       <html>
       <head>
@@ -248,13 +248,13 @@ build production:
           <div class="header">
               <h1>🖥️ Web Terminal Embed CDN</h1>
               <p>Production-ready CDN for embeddable web terminals</p>
-              <span class="badge">v${CI_COMMIT_TAG}</span>
+              <span class="badge">$PROD_VERSION</span>
           </div>
           
           <div class="info">
               <h3>📦 CDN URLs</h3>
               <p><strong>Latest Stable:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@latest/dist/web-terminal-embed.min.js</code></p>
-              <p><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@${CI_COMMIT_TAG}/dist/web-terminal-embed.min.js</code></p>
+              <p><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@$PROD_VERSION/dist/web-terminal-embed.min.js</code></p>
               <p><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@develop/dist/web-terminal-embed.min.js</code></p>
               <p><strong>GitLab Pages:</strong> <code>https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}/web-terminal-embed.min.js</code></p>
           </div>
@@ -296,6 +296,78 @@ build production:
           <h2>📁 Available Files</h2>
           <ul>
               <li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>
+              <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>
+              <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
+              <li><a href="package.json">package.json</a> (package metadata)</li>
+          </ul>
+          
+          <h2>📊 Version Information</h2>
+          <ul>
+              <li><strong>Version:</strong> $PROD_VERSION</li>
+              <li><strong>Built:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</li>
+              <li><strong>Commit:</strong> ${CI_COMMIT_SHORT_SHA}</li>
+          </ul>
+          
+          <script src="web-terminal-embed.min.js"></script>
+          <script>
+              let currentTerminal = null;
+              
+              function initTerminal() {
+                  const appName = document.getElementById('appName').value.trim();
+                  const clientId = document.getElementById('clientId').value.trim();
+                  const domain = document.getElementById('domain').value.trim();
+                  const status = document.getElementById('status');
+                  
+                  if (!appName || !clientId) {
+                      status.style.display = 'block';
+                      status.style.background = '#f8d7da';
+                      status.style.color = '#721c24';
+                      status.textContent = 'Please fill in GitHub App Name and Client ID';
+                      return;
+                  }
+                  
+                  try {
+                      if (currentTerminal && typeof currentTerminal.destroy === 'function') {
+                          currentTerminal.destroy();
+                      }
+                      
+                      const config = {
+                          githubAppName: appName,
+                          githubClientId: clientId
+                      };
+                      
+                      if (domain) {
+                          config.backendDomain = domain;
+                      }
+                      
+                      currentTerminal = new WebTerminalEmbed(config);
+                      
+                      status.style.display = 'block';
+                      status.style.background = '#d4edda';
+                      status.style.color = '#155724';
+                      status.textContent = '✅ Terminal initialized! Look for the ">_" button in the bottom-right corner.';
+                      
+                  } catch (error) {
+                      status.style.display = 'block';
+                      status.style.background = '#f8d7da';
+                      status.style.color = '#721c24';
+                      status.textContent = '❌ Error: ' + error.message;
+                  }
+              }
+          </script>
+      </body>
+      </html>
+      EOF
+    
+    # Deploy production version to GitLab Pages root
+    - mkdir -p public
+    - cp -r dist/* public/
+  artifacts:
+    paths:
+      - public/
+    expire_in: 30 days
+  only:
+    - tags<a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>
               <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>
               <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
               <li><a href="package.json">package.json</a> (package metadata)</li>
