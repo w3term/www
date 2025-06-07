@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Terminal Embed - Demo</title>
+    <title>Web Terminal Embed CDN</title>
     <style>
         * {
             margin: 0;
@@ -38,6 +38,29 @@
         .header p {
             font-size: 1.1rem;
             opacity: 0.9;
+        }
+
+        .badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .dev-badge {
+            background: #ff6b6b;
+        }
+
+        .dev-banner {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
         }
 
         .demo-grid {
@@ -116,13 +139,6 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
         .status {
             margin-top: 15px;
             padding: 10px;
@@ -134,13 +150,11 @@
         .status.success {
             background: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
         }
 
         .status.error {
             background: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
         }
 
         .info-panel {
@@ -151,15 +165,6 @@
             color: #495057;
             margin-bottom: 10px;
             font-size: 1.1rem;
-        }
-
-        .info-panel ul {
-            margin-left: 20px;
-            color: #6c757d;
-        }
-
-        .info-panel li {
-            margin-bottom: 8px;
         }
 
         .code-block {
@@ -193,66 +198,19 @@
             font-size: 12px;
             overflow-x: auto;
         }
-
-        .toggle-info {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
-        }
-
-        .terminal-info {
-            background: #1a202c;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        #embedCode {
-            display: none;
-            margin-top: 20px;
-        }
-
-        #embedCode .copy-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #4a5568;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-
-        #embedCode .code-container {
-            position: relative;
-        }
-
-        #embedCodeContent {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Development banner - shown only for dev builds -->
+        <div class="dev-banner" id="dev-banner" style="display: none;">
+            🚧 DEVELOPMENT BUILD - NOT FOR PRODUCTION USE 🚧
+        </div>
+
         <div class="header">
             <h1>🖥️ Web Terminal Embed</h1>
-            <p>Interactive demo and configuration tool</p>
+            <p>Interactive demo and CDN distribution</p>
+            <span class="badge" id="version-badge">{{VERSION}}</span>
         </div>
 
         <div class="demo-grid">
@@ -281,7 +239,10 @@
                     <div class="form-group">
                         <label for="vmType">VM Type</label>
                         <select id="vmType">
-                            <option value="cka">CKA Kubernetes Workshop</option>
+                            <option value="cka">CKA (Kubernetes)</option>
+                            <option value="ubuntu">Ubuntu</option>
+                            <option value="alpine">Alpine Linux</option>
+                            <option value="custom">Custom</option>
                         </select>
                         <small>Type of virtual machine environment</small>
                     </div>
@@ -304,95 +265,77 @@
                 </form>
 
                 <div class="current-config">
-                    <h4>📋 Current Configuration</h4>
-                    <pre id="configDisplay">No terminal initialized yet</pre>
-                </div>
-
-                <div id="embedCode" class="code-block">
-                    <div style="margin-bottom: 10px; color: #a0aec0; font-size: 12px;">
-                        📋 Copy this code to embed the terminal in your website:
-                    </div>
-                    <div class="code-container">
-                        <pre id="embedCodeContent"></pre>
-                        <button class="copy-btn" onclick="copyEmbedCode()">📋 Copy</button>
-                    </div>
+                    <h4>📋 Build Information</h4>
+                    <pre>Version: {{VERSION}}
+Environment: {{ENVIRONMENT}}
+Branch: {{BRANCH}}
+Commit: {{COMMIT}}
+Built: {{BUILD_DATE}}</pre>
                 </div>
             </div>
 
             <!-- Information Panel -->
             <div class="info-panel">
-                <h2>📚 How to Use</h2>
+                <h2>📚 CDN Information</h2>
                 
-                <h3>Getting Started</h3>
+                <h3>🚀 Usage</h3>
+                <div class="code-block">&lt;script src="https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@{{CDN_TAG}}/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+const terminal = new WebTerminalEmbed({
+    githubAppName: 'your-app-name',
+    githubClientId: 'your-client-id',
+    backendDomain: 'your-domain.com'
+});
+&lt;/script&gt;</div>
+                
+                <h3>📦 CDN URLs</h3>
                 <ul>
-                    <li>Fill in your GitHub OAuth App details</li>
-                    <li>For production, provide your backend domain</li>
-                    <li>Click "Initialize Terminal" to embed the terminal</li>
-                    <li>Look for the ">_" button in the bottom-right corner</li>
+                    <li><strong>Latest Stable:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@latest/dist/web-terminal-embed.min.js</code></li>
+                    <li><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@develop/dist/web-terminal-embed.min.js</code></li>
+                    <li><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@{{CDN_TAG}}/dist/web-terminal-embed.min.js</code></li>
                 </ul>
 
-                <h3>Required Setup</h3>
+                <h3>📁 Available Files</h3>
                 <ul>
-                    <li><strong>GitHub OAuth App:</strong> Create at github.com/settings/applications/new</li>
-                    <li><strong>WebSocket Server:</strong> Running on wss.yourdomain.com</li>
-                    <li><strong>Auth Server:</strong> Running on auth.yourdomain.com</li>
+                    <li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>
+                    <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>
+                    <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
                 </ul>
 
-                <div class="terminal-info">
-                    <strong>🔧 Terminal Features:</strong><br>
-                    • SSH access to Linux VMs<br>
-                    • Multiple terminal tabs<br>
-                    • Resizable interface<br>
-                    • GitHub OAuth authentication<br>
-                    • Session management<br>
-                    • Auto-reconnection
-                </div>
+                <h3>🔧 Terminal Features</h3>
+                <ul>
+                    <li>SSH access to Linux VMs</li>
+                    <li>Multiple terminal tabs</li>
+                    <li>Resizable interface</li>
+                    <li>GitHub OAuth authentication</li>
+                    <li>Session management</li>
+                    <li>Auto-reconnection</li>
+                </ul>
             </div>
         </div>
     </div>
 
-    <button class="toggle-info" onclick="toggleDebugInfo()">
-        📊 Toggle Debug Info
-    </button>
-
-    <!-- Terminal Script -->
-    <script src="./web-terminal.js"></script>
+    <!-- Load the terminal script -->
+    <script src="web-terminal-embed.min.js"></script>
     
     <script>
         var currentTerminal = null;
-        var debugInfoVisible = false;
 
-        // Wait for DOM to be ready
+        // Show development banner if this is a dev build
         document.addEventListener('DOMContentLoaded', function() {
+            var isProduction = '{{IS_PRODUCTION}}' === 'true';
+            var versionBadge = document.getElementById('version-badge');
+            var devBanner = document.getElementById('dev-banner');
+            
+            if (!isProduction) {
+                devBanner.style.display = 'block';
+                versionBadge.className = 'badge dev-badge';
+            }
+
             // Form submission handler
             document.getElementById('terminalConfig').addEventListener('submit', function(e) {
                 e.preventDefault();
                 initializeTerminal();
-            });
-
-            // Auto-fill example values on localhost
-            var isLocalhost = window.location.hostname === 'localhost' || 
-                              window.location.hostname.indexOf('127.0.0.1') === 0;
-            
-            if (isLocalhost) {
-                document.getElementById('githubAppName').value = 'terminal-local';
-                document.getElementById('githubClientId').value = 'Ov23lih80tF9aLslXFDC';
-                showStatus('💡 Example values loaded for localhost development', 'success');
-            }
-
-            // Keyboard shortcuts
-            document.addEventListener('keydown', function(e) {
-                // Ctrl/Cmd + Enter to initialize terminal
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    initializeTerminal();
-                }
-                
-                // Ctrl/Cmd + D for debug info
-                if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-                    e.preventDefault();
-                    toggleDebugInfo();
-                }
             });
         });
 
@@ -430,8 +373,6 @@
                 // Create new terminal
                 currentTerminal = new WebTerminalEmbed(config);
                 
-                // Update display
-                updateConfigDisplay(config);
                 showStatus('✅ Terminal initialized successfully! Look for the ">_" button in the bottom-right corner.', 'success');
                 
             } catch (error) {
@@ -454,105 +395,6 @@
                 setTimeout(function() {
                     status.style.display = 'none';
                 }, 5000);
-            }
-        }
-
-        function updateConfigDisplay(config) {
-            var display = document.getElementById('configDisplay');
-            var configJson = JSON.stringify(config, null, 2);
-            display.textContent = configJson;
-            
-            // Generate and show embed code
-            generateEmbedCode(config);
-        }
-
-        function generateEmbedCode(config) {
-            var embedCodeElement = document.getElementById('embedCode');
-            var embedCodeContent = document.getElementById('embedCodeContent');
-            
-            // Build the configuration object string
-            var configStr = '';
-            if (config.githubAppName) {
-                configStr += '    githubAppName: \'' + config.githubAppName + '\'';
-            }
-            if (config.githubClientId) {
-                configStr += configStr ? ',\n' : '';
-                configStr += '    githubClientId: \'' + config.githubClientId + '\'';
-            }
-            if (config.backendDomain) {
-                configStr += configStr ? ',\n' : '';
-                configStr += '    backendDomain: \'' + config.backendDomain + '\'';
-            }
-            if (config.vmType && config.vmType !== 'cka') {
-                configStr += configStr ? ',\n' : '';
-                configStr += '    vmType: \'' + config.vmType + '\'';
-            }
-            if (config.debug !== undefined) {
-                configStr += configStr ? ',\n' : '';
-                configStr += '    debug: ' + config.debug;
-            }
-            
-            var embedCode = '<!-- Web Terminal Embed -->\n' +
-                '<script src="https://cdn.jsdelivr.net/gh/yourusername/web-terminal@main/dist/web-terminal-embed.min.js"><' + '/script>\n' +
-                '<script>\n' +
-                'const terminal = new WebTerminalEmbed({\n' +
-                configStr + '\n' +
-                '});\n' +
-                '<' + '/script>';
-
-            embedCodeContent.textContent = embedCode;
-            embedCodeElement.style.display = 'block';
-        }
-
-        function copyEmbedCode() {
-            var embedCode = document.getElementById('embedCodeContent').textContent;
-            
-            // Try to use the modern clipboard API
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(embedCode).then(function() {
-                    showStatus('✅ Embed code copied to clipboard!', 'success');
-                }).catch(function() {
-                    fallbackCopy(embedCode);
-                });
-            } else {
-                fallbackCopy(embedCode);
-            }
-        }
-
-        function fallbackCopy(text) {
-            // Fallback for older browsers or non-HTTPS
-            var textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                showStatus('✅ Embed code copied to clipboard!', 'success');
-            } catch (err) {
-                showStatus('⚠️ Could not copy to clipboard. Please select and copy manually.', 'error');
-            }
-            
-            document.body.removeChild(textArea);
-        }
-
-        function toggleDebugInfo() {
-            debugInfoVisible = !debugInfoVisible;
-            
-            if (debugInfoVisible && window.CONFIG) {
-                console.log('=== WEB TERMINAL DEBUG INFO ===');
-                console.log('Current CONFIG:', window.CONFIG);
-                console.log('Current Terminal Instance:', currentTerminal);
-                console.log('Page Location:', window.location.href);
-                console.log('User Agent:', navigator.userAgent);
-                console.log('================================');
-                alert('Debug info logged to console. Open Developer Tools (F12) to view.');
-            } else if (!window.CONFIG) {
-                alert('No terminal initialized yet. Initialize a terminal first to see debug info.');
             }
         }
     </script>
