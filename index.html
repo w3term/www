@@ -1,59 +1,560 @@
-<!-- Terminal Scripts -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Terminal Embed - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<!-- GitHub Icon for Login Button -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-<!-- Terminal toggle button -->
-<button id="terminalToggle" data-turbo-permanent style="position: fixed; bottom: 20px; right: 20px; width: 50px; height: 40px; border-radius: 5px; background-color: #000000; color: white; border: 1px solid white; display: flex; justify-content: center; align-items: top; cursor: pointer; z-index: 10000; font-size: 20px; font-family: monospace; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
-    >_
-    <!-- <span id="connectionBadge"></span> -->
-</button>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-<!-- Terminal wrapper -->
-<div id="terminalWrapper" data-turbo-permanent style="position: fixed; bottom: -450px; left: 0; right: 0; height: 450px; background-color: rgba(0, 0, 0, 0.9); z-index: 9999; display: flex; flex-direction: column; transition: bottom 0.3s ease-in-out; border-top: 3px solid #333;">
-    <!-- Resize handle -->
-    <div id="terminalResizeHandle" style="position: absolute; top: 0; left: 0; right: 0; height: 5px; cursor: ns-resize; background-color: transparent;"></div>
-    
-    <!-- Terminal header -->
-    <div id="terminalHeader" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background-color: #333; color: #fff; cursor: move;">
-        <div id="terminal-tabs-container" style="display: none; align-items: center; overflow-x: auto;">
-            <!-- Tab Container -->
-            <div class="terminal-tabs-list" style="display: flex; align-items: center; overflow-x: auto;">
-                <!-- Tab 1 -->
-                <div id="terminal-tab-1" class="terminal-tab active-tab" style="font-family: monospace; padding: 5px 15px; margin-right: 5px; cursor: pointer; background-color: #444; border-radius: 4px 4px 0 0;">
-                    Terminal 1
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .config-panel, .info-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .config-panel h2, .info-panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info-panel {
+            background: #f8f9fa;
+        }
+
+        .info-panel h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .info-panel ul {
+            margin-left: 20px;
+            color: #6c757d;
+        }
+
+        .info-panel li {
+            margin-bottom: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .current-config {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .current-config h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .current-config pre {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .toggle-info {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+
+        .terminal-info {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        #embedCode {
+            display: none;
+            margin-top: 20px;
+        }
+
+        #embedCode .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        #embedCode .code-container {
+            position: relative;
+        }
+
+        #embedCodeContent {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖥️ Web Terminal Embed</h1>
+            <p>Interactive demo and configuration tool</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Configuration Panel -->
+            <div class="config-panel">
+                <h2>⚙️ Terminal Configuration</h2>
+                <form id="terminalConfig">
+                    <div class="form-group">
+                        <label for="githubAppName">GitHub App Name *</label>
+                        <input type="text" id="githubAppName" value="terminal-local" required>
+                        <small>Name of your GitHub OAuth application</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="githubClientId">GitHub Client ID *</label>
+                        <input type="text" id="githubClientId" value="123" required>
+                        <small>OAuth App Client ID from GitHub Developer Settings</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="backendDomain">Backend Domain</label>
+                        <input type="text" id="backendDomain" placeholder="mydomain.com">
+                        <small>Required for production. Leave empty for localhost development</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vmType">VM Type</label>
+                        <select id="vmType">
+                            <option value="cka">CKA Kubernetes Workshop</option>
+                        </select>
+                        <small>Type of virtual machine environment</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="debug">Debug Mode</label>
+                        <select id="debug">
+                            <option value="auto">Auto (localhost = true)</option>
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                        <small>Enable console logging for troubleshooting</small>
+                    </div>
+
+                    <button type="submit" class="btn" id="initTerminal">
+                        🚀 Initialize Terminal
+                    </button>
+
+                    <div id="status" class="status"></div>
+                </form>
+
+                <div class="current-config">
+                    <h4>📋 Current Configuration</h4>
+                    <pre id="configDisplay">No terminal initialized yet</pre>
                 </div>
-                <!-- Add Terminal Button -->
-                <button id="add-terminal-tab" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: 5px; background-color: #333; color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold;">+</button>
+
+                <div id="embedCode" class="code-block">
+                    <div style="margin-bottom: 10px; color: #a0aec0; font-size: 12px;">
+                        📋 Copy this code to embed the terminal in your website:
+                    </div>
+                    <div class="code-container">
+                        <pre id="embedCodeContent"></pre>
+                        <button class="copy-btn" onclick="copyEmbedCode()">📋 Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Information Panel -->
+            <div class="info-panel">
+                <h2>📚 How to Use</h2>
+                
+                <h3>Getting Started</h3>
+                <ul>
+                    <li>Fill in your GitHub OAuth App details</li>
+                    <li>For production, provide your backend domain</li>
+                    <li>Click "Initialize Terminal" to embed the terminal</li>
+                    <li>Look for the ">_" button in the bottom-right corner</li>
+                </ul>
+
+                <h3>Required Setup</h3>
+                <ul>
+                    <li><strong>GitHub OAuth App:</strong> Create at github.com/settings/applications/new</li>
+                    <li><strong>WebSocket Server:</strong> Running on wss.yourdomain.com</li>
+                    <li><strong>Auth Server:</strong> Running on auth.yourdomain.com</li>
+                </ul>
+
+                <div class="terminal-info">
+                    <strong>🔧 Terminal Features:</strong><br>
+                    • SSH access to Linux VMs<br>
+                    • Multiple terminal tabs<br>
+                    • Resizable interface<br>
+                    • GitHub OAuth authentication<br>
+                    • Session management<br>
+                    • Auto-reconnection
+                </div>
             </div>
         </div>
-        <div id="auth-status" style="font-family: monospace; margin-left: auto; margin-right: 10px;">
-            Not authenticated
-        </div>
     </div>
-    
-    <!-- Login Container -->
-    <div id="login-container" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #111;">
-        <!--<h2 style="color: #f0f0f0; font-family: sans-serif; margin-bottom: 30px;">Terminal Login</h2>-->
-        <button id="github-login-button" style="display: flex; align-items: center; background-color: #24292e; color: white; border: none; border-radius: 6px; padding: 10px 16px; font-size: 16px; cursor: pointer; transition: background-color 0.2s;">
-            <i class="fab fa-github" style="margin-right: 10px; font-size: 20px;"></i>
-            Sign in with GitHub
-        </button>
-    </div>
-    
-    <!-- Terminal content containers - only one to start -->
-    <div id="terminal-container-1" class="terminal-container active-container" style="flex: 1; overflow: hidden; background: #000; width: 100%; display: none;"></div>
-    
-    <!-- Terminal containers will be added dynamically when needed -->
-    
-    <!-- Connection status panel -->
-    <div id="connection-status" style="padding: 5px 10px; background: #222; color: #ccc; font-family: monospace; font-size: 12px; border-top: 1px solid #444; display: none;">
-        <!-- Status message will be displayed only after authentication -->
-    </div>
-</div>
 
-<script src="./index.js"></script>
-<link rel="stylesheet" href="./index.css">
+    <button class="toggle-info" onclick="toggleDebugInfo()">
+        📊 Toggle Debug Info
+    </button>
+
+    <!-- Terminal Script -->
+    <script src="./web-terminal.js"></script>
+    
+    <script>
+        var currentTerminal = null;
+        var debugInfoVisible = false;
+
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Form submission handler
+            document.getElementById('terminalConfig').addEventListener('submit', function(e) {
+                e.preventDefault();
+                initializeTerminal();
+            });
+
+            // Auto-fill example values on localhost
+            var isLocalhost = window.location.hostname === 'localhost' || 
+                              window.location.hostname.indexOf('127.0.0.1') === 0;
+            
+            if (isLocalhost) {
+                document.getElementById('githubAppName').value = 'terminal-local';
+                document.getElementById('githubClientId').value = 'Ov23lih80tF9aLslXFDC';
+                showStatus('💡 Example values loaded for localhost development', 'success');
+            }
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Ctrl/Cmd + Enter to initialize terminal
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    initializeTerminal();
+                }
+                
+                // Ctrl/Cmd + D for debug info
+                if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                    e.preventDefault();
+                    toggleDebugInfo();
+                }
+            });
+        });
+
+        function initializeTerminal() {
+            var status = document.getElementById('status');
+            var btn = document.getElementById('initTerminal');
+            
+            // Get form values
+            var config = {
+                githubAppName: document.getElementById('githubAppName').value.trim(),
+                githubClientId: document.getElementById('githubClientId').value.trim(),
+                backendDomain: document.getElementById('backendDomain').value.trim() || undefined,
+                vmType: document.getElementById('vmType').value,
+                debug: document.getElementById('debug').value === 'auto' ? undefined : 
+                      document.getElementById('debug').value === 'true'
+            };
+
+            // Validate required fields
+            if (!config.githubAppName || !config.githubClientId) {
+                showStatus('Please fill in required fields (GitHub App Name and Client ID)', 'error');
+                return;
+            }
+
+            // Update UI
+            btn.disabled = true;
+            btn.textContent = '⏳ Initializing...';
+            showStatus('Initializing terminal...', 'success');
+
+            try {
+                // Destroy existing terminal if any
+                if (currentTerminal && typeof currentTerminal.destroy === 'function') {
+                    currentTerminal.destroy();
+                }
+
+                // Create new terminal
+                currentTerminal = new WebTerminalEmbed(config);
+                
+                // Update display
+                updateConfigDisplay(config);
+                showStatus('✅ Terminal initialized successfully! Look for the ">_" button in the bottom-right corner.', 'success');
+                
+            } catch (error) {
+                console.error('Terminal initialization error:', error);
+                showStatus('❌ Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Initialize Terminal';
+            }
+        }
+
+        function showStatus(message, type) {
+            var status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(function() {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function updateConfigDisplay(config) {
+            var display = document.getElementById('configDisplay');
+            var configJson = JSON.stringify(config, null, 2);
+            display.textContent = configJson;
+            
+            // Generate and show embed code
+            generateEmbedCode(config);
+        }
+
+        function generateEmbedCode(config) {
+            var embedCodeElement = document.getElementById('embedCode');
+            var embedCodeContent = document.getElementById('embedCodeContent');
+            
+            // Build the configuration object string
+            var configStr = '';
+            if (config.githubAppName) {
+                configStr += '    githubAppName: \'' + config.githubAppName + '\'';
+            }
+            if (config.githubClientId) {
+                configStr += configStr ? ',\n' : '';
+                configStr += '    githubClientId: \'' + config.githubClientId + '\'';
+            }
+            if (config.backendDomain) {
+                configStr += configStr ? ',\n' : '';
+                configStr += '    backendDomain: \'' + config.backendDomain + '\'';
+            }
+            if (config.vmType && config.vmType !== 'cka') {
+                configStr += configStr ? ',\n' : '';
+                configStr += '    vmType: \'' + config.vmType + '\'';
+            }
+            if (config.debug !== undefined) {
+                configStr += configStr ? ',\n' : '';
+                configStr += '    debug: ' + config.debug;
+            }
+            
+            var embedCode = '<!-- Web Terminal Embed -->\n' +
+                '<script src="https://cdn.jsdelivr.net/gh/yourusername/web-terminal@main/dist/web-terminal-embed.min.js"><' + '/script>\n' +
+                '<script>\n' +
+                'const terminal = new WebTerminalEmbed({\n' +
+                configStr + '\n' +
+                '});\n' +
+                '<' + '/script>';
+
+            embedCodeContent.textContent = embedCode;
+            embedCodeElement.style.display = 'block';
+        }
+
+        function copyEmbedCode() {
+            var embedCode = document.getElementById('embedCodeContent').textContent;
+            
+            // Try to use the modern clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(embedCode).then(function() {
+                    showStatus('✅ Embed code copied to clipboard!', 'success');
+                }).catch(function() {
+                    fallbackCopy(embedCode);
+                });
+            } else {
+                fallbackCopy(embedCode);
+            }
+        }
+
+        function fallbackCopy(text) {
+            // Fallback for older browsers or non-HTTPS
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showStatus('✅ Embed code copied to clipboard!', 'success');
+            } catch (err) {
+                showStatus('⚠️ Could not copy to clipboard. Please select and copy manually.', 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function toggleDebugInfo() {
+            debugInfoVisible = !debugInfoVisible;
+            
+            if (debugInfoVisible && window.CONFIG) {
+                console.log('=== WEB TERMINAL DEBUG INFO ===');
+                console.log('Current CONFIG:', window.CONFIG);
+                console.log('Current Terminal Instance:', currentTerminal);
+                console.log('Page Location:', window.location.href);
+                console.log('User Agent:', navigator.userAgent);
+                console.log('================================');
+                alert('Debug info logged to console. Open Developer Tools (F12) to view.');
+            } else if (!window.CONFIG) {
+                alert('No terminal initialized yet. Initialize a terminal first to see debug info.');
+            }
+        }
+    </script>
+</body>
+</html>
