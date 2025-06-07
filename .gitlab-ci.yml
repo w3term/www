@@ -9,117 +9,24 @@ build-dev:
   stage: build-dev
   image: node:18-alpine
   script:
-    # Install terser for minification
     - npm install -g terser
-    
-    # Create dist directory
     - mkdir -p dist
-    
-    # Set development version
     - DEV_VERSION="develop-${CI_COMMIT_SHORT_SHA}"
-    - echo "Building development version: $DEV_VERSION"
-    
-    # Add version header to the file
-    - |
-      cat > dist/web-terminal-embed.js << EOF
-      /**
-       * Web Terminal Embed
-       * Version: $DEV_VERSION
-       * Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-       * Commit: ${CI_COMMIT_SHA}
-       * Branch: ${CI_COMMIT_REF_NAME}
-       */
-      EOF
-    
-    # Append the actual terminal code
+    - echo "Building development version $DEV_VERSION"
+    - echo "/**" > dist/web-terminal-embed.js
+    - echo " * Web Terminal Embed" >> dist/web-terminal-embed.js
+    - echo " * Version $DEV_VERSION" >> dist/web-terminal-embed.js
+    - echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/web-terminal-embed.js
+    - echo " * Commit ${CI_COMMIT_SHA}" >> dist/web-terminal-embed.js
+    - echo " * Branch ${CI_COMMIT_REF_NAME}" >> dist/web-terminal-embed.js
+    - echo " */" >> dist/web-terminal-embed.js
     - cat web-terminal.js >> dist/web-terminal-embed.js
-    
-    # Create minified version
     - terser dist/web-terminal-embed.js --compress --mangle --output dist/web-terminal-embed.min.js --comments "/^!|@preserve|@license|@cc_on/i"
-    
-    # Create build info
-    - |
-      cat > dist/VERSION.txt << EOF
-      Version: $DEV_VERSION
-      Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-      Commit: ${CI_COMMIT_SHA}
-      Branch: ${CI_COMMIT_REF_NAME}
-      Pipeline: ${CI_PIPELINE_ID}
-      Environment: Development
-      EOF
-    
-    # Create package.json for development
-    - |
-      cat > dist/package.json << EOF
-      {
-        "name": "web-terminal-embed",
-        "version": "$DEV_VERSION",
-        "description": "Embeddable web terminal with SSH capabilities (Development Build)",
-        "main": "web-terminal-embed.min.js",
-        "files": ["*.js", "*.txt"],
-        "repository": {
-          "type": "git",
-          "url": "${CI_PROJECT_URL}"
-        },
-        "keywords": ["terminal", "ssh", "embed", "websocket", "development"],
-        "license": "MIT"
-      }
-      EOF
-    
-    # Create development index page
-    - |
-      cat > dist/index.html << EOF
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Web Terminal Embed - Development CDN</title>
-          <style>
-              body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-              .dev-banner { background: #ff6b6b; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-weight: bold; }
-              .code { background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 5px; margin: 15px 0; font-family: monospace; overflow-x: auto; }
-              .info { background: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 6px; margin: 20px 0; }
-          </style>
-      </head>
-      <body>
-          <div class="dev-banner">
-              🚧 DEVELOPMENT BUILD - NOT FOR PRODUCTION USE 🚧
-          </div>
-          
-          <h1>🖥️ Web Terminal Embed - Development CDN</h1>
-          
-          <div class="info">
-              <h3>📦 Development Build Information</h3>
-              <p><strong>Version:</strong> $DEV_VERSION</p>
-              <p><strong>Branch:</strong> ${CI_COMMIT_REF_NAME}</p>
-              <p><strong>Commit:</strong> ${CI_COMMIT_SHORT_SHA}</p>
-              <p><strong>Built:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</p>
-          </div>
-          
-          <h2>🚀 Development Usage</h2>
-          <div class="code">&lt;script src="https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@develop/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;
-      &lt;script&gt;
-      const terminal = new WebTerminalEmbed({
-          githubAppName: 'your-app-name',
-          githubClientId: 'your-client-id',
-          backendDomain: 'your-domain.com',
-          debug: true  // Enable debug mode for development
-      });
-      &lt;/script&gt;</div>
-          
-          <h2>📁 Available Files</h2>
-          <ul>
-              <li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (minified)</li>
-              <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source)</li>
-              <li><a href="VERSION.txt">VERSION.txt</a> (build info)</li>
-              <li><a href="package.json">package.json</a> (metadata)</li>
-          </ul>
-          
-          <p><strong>⚠️ Note:</strong> For production use, please use the stable release from the main branch.</p>
-      </body>
-      </html>
-      EOF
-    
-    # Deploy development version to GitLab Pages (develop subfolder)
+    - echo "Version $DEV_VERSION" > dist/VERSION.txt
+    - echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
+    - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
+    - echo "Branch ${CI_COMMIT_REF_NAME}" >> dist/VERSION.txt
+    - echo "Environment Development" >> dist/VERSION.txt
     - mkdir -p public/develop
     - cp -r dist/* public/develop/
   artifacts:
@@ -151,215 +58,41 @@ build-production:
   stage: build-prod
   image: node:18-alpine
   script:
-    # Install terser for minification
     - npm install -g terser
-    
-    # Create dist directory
     - mkdir -p dist
-    
-    # Use the actual Git tag as version
     - PROD_VERSION="$CI_COMMIT_TAG"
-    - echo "Building production version: $PROD_VERSION"
-    
-    # Add version header to the file
-    - |
-      cat > dist/web-terminal-embed.js << EOF
-      /**
-       * Web Terminal Embed
-       * Version: $PROD_VERSION
-       * Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-       * Commit: ${CI_COMMIT_SHA}
-       * Release Tag: ${CI_COMMIT_TAG}
-       */
-      EOF
-    
-    # Append the actual terminal code
+    - echo "Building production version $PROD_VERSION"
+    - echo "/**" > dist/web-terminal-embed.js
+    - echo " * Web Terminal Embed" >> dist/web-terminal-embed.js
+    - echo " * Version $PROD_VERSION" >> dist/web-terminal-embed.js
+    - echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/web-terminal-embed.js
+    - echo " * Commit ${CI_COMMIT_SHA}" >> dist/web-terminal-embed.js
+    - echo " * Release Tag ${CI_COMMIT_TAG}" >> dist/web-terminal-embed.js
+    - echo " */" >> dist/web-terminal-embed.js
     - cat web-terminal.js >> dist/web-terminal-embed.js
-    
-    # Create minified version
     - terser dist/web-terminal-embed.js --compress --mangle --output dist/web-terminal-embed.min.js --comments "/^!|@preserve|@license|@cc_on/i"
-    
-    # Create build info
-    - |
-      cat > dist/VERSION.txt << EOF
-      Version: $PROD_VERSION
-      Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-      Commit: ${CI_COMMIT_SHA}
-      Release Tag: ${CI_COMMIT_TAG}
-      Pipeline: ${CI_PIPELINE_ID}
-      Environment: Production
-      EOF
-    
-    # Create package.json for production
-    - |
-      cat > dist/package.json << EOF
-      {
-        "name": "web-terminal-embed",
-        "version": "$PROD_VERSION",
-        "description": "Embeddable web terminal with SSH capabilities",
-        "main": "web-terminal-embed.min.js",
-        "files": ["*.js", "*.txt"],
-        "repository": {
-          "type": "git",
-          "url": "${CI_PROJECT_URL}"
-        },
-        "keywords": ["terminal", "ssh", "embed", "websocket"],
-        "license": "MIT"
-      }
-      EOF
-    
-    # Create production index page with demo
-    - |
-      cat > dist/index.html << EOF
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Web Terminal Embed CDN</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-              body { 
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                  max-width: 1000px; margin: 50px auto; padding: 20px; 
-                  background: #f8f9fa; color: #333;
-              }
-              .header { text-align: center; margin-bottom: 40px; }
-              .badge { background: #28a745; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px; }
-              .code { 
-                  background: #2d3748; color: #e2e8f0; padding: 20px; 
-                  border-radius: 8px; margin: 15px 0; overflow-x: auto;
-                  font-family: 'Courier New', monospace; font-size: 14px;
-              }
-              .info { 
-                  background: #e3f2fd; border: 1px solid #90caf9; 
-                  padding: 20px; border-radius: 8px; margin: 20px 0; 
-              }
-              .demo-section { 
-                  background: white; border-radius: 8px; padding: 30px; 
-                  box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 30px 0; 
-              }
-              .form-group { margin-bottom: 15px; }
-              .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
-              .form-group input { width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 6px; }
-              .btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
-              .btn:hover { background: #0056b3; }
-          </style>
-      </head>
-      <body>
-          <div class="header">
-              <h1>🖥️ Web Terminal Embed CDN</h1>
-              <p>Production-ready CDN for embeddable web terminals</p>
-              <span class="badge">$PROD_VERSION</span>
-          </div>
-          
-          <div class="info">
-              <h3>📦 CDN URLs</h3>
-              <p><strong>Latest Stable:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@latest/dist/web-terminal-embed.min.js</code></p>
-              <p><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@$PROD_VERSION/dist/web-terminal-embed.min.js</code></p>
-              <p><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@develop/dist/web-terminal-embed.min.js</code></p>
-              <p><strong>GitLab Pages:</strong> <code>https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}/web-terminal-embed.min.js</code></p>
-          </div>
-          
-          <h2>🚀 Quick Start</h2>
-          <div class="code">&lt;script src="https://cdn.jsdelivr.net/gl/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}@latest/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;
-      &lt;script&gt;
-      const terminal = new WebTerminalEmbed({
-          githubAppName: 'your-app-name',
-          githubClientId: 'your-client-id',
-          backendDomain: 'your-domain.com'
-      });
-      &lt;/script&gt;</div>
-          
-          <div class="demo-section">
-              <h2>🧪 Live Demo</h2>
-              <p>Configure and test the terminal embed:</p>
-              
-              <div class="form-group">
-                  <label>GitHub App Name:</label>
-                  <input type="text" id="appName" value="demo-app" placeholder="your-github-app">
-              </div>
-              
-              <div class="form-group">
-                  <label>GitHub Client ID:</label>
-                  <input type="text" id="clientId" value="demo-client-id" placeholder="Ov23li...">
-              </div>
-              
-              <div class="form-group">
-                  <label>Backend Domain (optional for localhost):</label>
-                  <input type="text" id="domain" placeholder="yourdomain.com">
-              </div>
-              
-              <button class="btn" onclick="initTerminal()">🚀 Initialize Terminal</button>
-              
-              <div id="status" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>
-          </div>
-          
-          <h2>📁 Available Files</h2>
-          <ul>
-              <li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>
-              <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>
-              <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
-              <li><a href="package.json">package.json</a> (package metadata)</li>
-          </ul>
-          
-          <h2>📊 Version Information</h2>
-          <ul>
-              <li><strong>Version:</strong> $PROD_VERSION</li>
-              <li><strong>Built:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</li>
-              <li><strong>Commit:</strong> ${CI_COMMIT_SHORT_SHA}</li>
-          </ul>
-          
-          <script src="web-terminal-embed.min.js"></script>
-          <script>
-              let currentTerminal = null;
-              
-              function initTerminal() {
-                  const appName = document.getElementById('appName').value.trim();
-                  const clientId = document.getElementById('clientId').value.trim();
-                  const domain = document.getElementById('domain').value.trim();
-                  const status = document.getElementById('status');
-                  
-                  if (!appName || !clientId) {
-                      status.style.display = 'block';
-                      status.style.background = '#f8d7da';
-                      status.style.color = '#721c24';
-                      status.textContent = 'Please fill in GitHub App Name and Client ID';
-                      return;
-                  }
-                  
-                  try {
-                      if (currentTerminal && typeof currentTerminal.destroy === 'function') {
-                          currentTerminal.destroy();
-                      }
-                      
-                      const config = {
-                          githubAppName: appName,
-                          githubClientId: clientId
-                      };
-                      
-                      if (domain) {
-                          config.backendDomain = domain;
-                      }
-                      
-                      currentTerminal = new WebTerminalEmbed(config);
-                      
-                      status.style.display = 'block';
-                      status.style.background = '#d4edda';
-                      status.style.color = '#155724';
-                      status.textContent = '✅ Terminal initialized! Look for the ">_" button in the bottom-right corner.';
-                      
-                  } catch (error) {
-                      status.style.display = 'block';
-                      status.style.background = '#f8d7da';
-                      status.style.color = '#721c24';
-                      status.textContent = '❌ Error: ' + error.message;
-                  }
-              }
-          </script>
-      </body>
-      </html>
-      EOF
-    
-    # Deploy production version to GitLab Pages root
+    - echo "Version $PROD_VERSION" > dist/VERSION.txt
+    - echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
+    - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
+    - echo "Release Tag ${CI_COMMIT_TAG}" >> dist/VERSION.txt
+    - echo "Environment Production" >> dist/VERSION.txt
+    - echo '<!DOCTYPE html>' > dist/index.html
+    - echo '<html><head><title>Web Terminal Embed CDN</title></head>' >> dist/index.html
+    - echo '<body><h1>Web Terminal Embed CDN</h1>' >> dist/index.html
+    - echo '<h2>Production Release</h2>' >> dist/index.html
+    - echo "<p><strong>Version:</strong> $PROD_VERSION</p>" >> dist/index.html
+    - echo "<p><strong>Built:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</p>" >> dist/index.html
+    - echo '<h3>CDN URLs</h3>' >> dist/index.html
+    - echo '<p><code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<p><code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@'$PROD_VERSION'/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<h3>Usage</h3>' >> dist/index.html
+    - echo '<pre>&lt;script src="https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;</pre>' >> dist/index.html
+    - echo '<h3>Files</h3>' >> dist/index.html
+    - echo '<ul>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a></li>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.js">web-terminal-embed.js</a></li>' >> dist/index.html
+    - echo '<li><a href="VERSION.txt">VERSION.txt</a></li>' >> dist/index.html
+    - echo '</ul></body></html>' >> dist/index.html
     - mkdir -p public
     - cp -r dist/* public/
   artifacts:
