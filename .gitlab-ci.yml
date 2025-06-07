@@ -4,6 +4,30 @@ stages:
   - release
   - build-prod
 
+# Reusable scripts
+.create_index_html: &create_index_html
+  - echo '<!DOCTYPE html>' > dist/index.html
+  - echo '<html><head>' >> dist/index.html
+  - echo '<meta charset="UTF-8">' >> dist/index.html
+  - echo '<meta name="viewport" content="width=device-width, initial-scale=1.0">' >> dist/index.html
+  - echo '<title>Web Terminal Embed CDN</title>' >> dist/index.html
+  - echo '<style>' >> dist/index.html
+  - echo 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 1000px; margin: 50px auto; padding: 20px; background: #f8f9fa; color: #333; }' >> dist/index.html
+  - echo '.header { text-align: center; margin-bottom: 40px; }' >> dist/index.html
+  - echo '.badge { background: #28a745; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px; }' >> dist/index.html
+  - echo '.dev-badge { background: #ff6b6b; }' >> dist/index.html
+  - echo '.code { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; margin: 15px 0; overflow-x: auto; font-family: "Courier New", monospace; font-size: 14px; }' >> dist/index.html
+  - echo '.info { background: #e3f2fd; border: 1px solid #90caf9; padding: 20px; border-radius: 8px; margin: 20px 0; }' >> dist/index.html
+  - echo '.demo-section { background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 30px 0; }' >> dist/index.html
+  - echo '.form-group { margin-bottom: 15px; }' >> dist/index.html
+  - echo '.form-group label { display: block; margin-bottom: 5px; font-weight: 600; }' >> dist/index.html
+  - echo '.form-group input { width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 6px; }' >> dist/index.html
+  - echo '.btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }' >> dist/index.html
+  - echo '.btn:hover { background: #0056b3; }' >> dist/index.html
+  - echo '.dev-banner { background: #ff6b6b; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-weight: bold; }' >> dist/index.html
+  - echo '</style>' >> dist/index.html
+  - echo '</head><body>' >> dist/index.html
+
 # Build development version when push on develop branch
 build-dev:
   stage: build-dev
@@ -27,6 +51,68 @@ build-dev:
     - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
     - echo "Branch ${CI_COMMIT_REF_NAME}" >> dist/VERSION.txt
     - echo "Environment Development" >> dist/VERSION.txt
+    # Create index.html using shared template
+    - *create_index_html
+    - echo '<div class="dev-banner">🚧 DEVELOPMENT BUILD - NOT FOR PRODUCTION USE 🚧</div>' >> dist/index.html
+    - echo '<div class="header">' >> dist/index.html
+    - echo '<h1>🖥️ Web Terminal Embed CDN</h1>' >> dist/index.html
+    - echo '<p>Development build for testing</p>' >> dist/index.html
+    - echo '<span class="badge dev-badge">'$DEV_VERSION'</span>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<div class="info">' >> dist/index.html
+    - echo '<h3>📦 Development Build Information</h3>' >> dist/index.html
+    - echo '<p><strong>Version:</strong> '$DEV_VERSION'</p>' >> dist/index.html
+    - echo '<p><strong>Branch:</strong> '${CI_COMMIT_REF_NAME}'</p>' >> dist/index.html
+    - echo '<p><strong>Commit:</strong> '${CI_COMMIT_SHORT_SHA}'</p>' >> dist/index.html
+    - echo '<p><strong>Built:</strong> '$(date -u +"%Y-%m-%d %H:%M:%S UTC")'</p>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<div class="info">' >> dist/index.html
+    - echo '<h3>📦 CDN URLs</h3>' >> dist/index.html
+    - echo '<p><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@develop/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<p><strong>GitLab Pages:</strong> <code>https://'${CI_PROJECT_NAMESPACE}'.gitlab.io/'${CI_PROJECT_NAME}'/develop/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<h2>🚀 Development Usage</h2>' >> dist/index.html
+    - echo '<div class="code">&lt;script src="https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@develop/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;<br>' >> dist/index.html
+    - echo '&lt;script&gt;<br>' >> dist/index.html
+    - echo 'const terminal = new WebTerminalEmbed({<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;githubAppName: "your-app-name",<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;githubClientId: "your-client-id",<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;backendDomain: "your-domain.com",<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;debug: true  // Enable debug mode for development<br>' >> dist/index.html
+    - echo '});<br>' >> dist/index.html
+    - echo '&lt;/script&gt;</div>' >> dist/index.html
+    - echo '<div class="demo-section">' >> dist/index.html
+    - echo '<h2>🧪 Live Demo</h2>' >> dist/index.html
+    - echo '<p>Configure and test the terminal embed:</p>' >> dist/index.html
+    - echo '<div class="form-group"><label>GitHub App Name:</label><input type="text" id="appName" value="demo-app" placeholder="your-github-app"></div>' >> dist/index.html
+    - echo '<div class="form-group"><label>GitHub Client ID:</label><input type="text" id="clientId" value="demo-client-id" placeholder="Ov23li..."></div>' >> dist/index.html
+    - echo '<div class="form-group"><label>Backend Domain (optional for localhost):</label><input type="text" id="domain" placeholder="yourdomain.com"></div>' >> dist/index.html
+    - echo '<button class="btn" onclick="initTerminal()">🚀 Initialize Terminal</button>' >> dist/index.html
+    - echo '<div id="status" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<h2>📁 Available Files</h2>' >> dist/index.html
+    - echo '<ul>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (minified)</li>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source)</li>' >> dist/index.html
+    - echo '<li><a href="VERSION.txt">VERSION.txt</a> (build info)</li>' >> dist/index.html
+    - echo '</ul>' >> dist/index.html
+    - echo '<p><strong>⚠️ Note:</strong> For production use, please use the stable release from the main branch.</p>' >> dist/index.html
+    - echo '<script src="web-terminal-embed.min.js"></script>' >> dist/index.html
+    - echo '<script>' >> dist/index.html
+    - echo 'let currentTerminal = null;' >> dist/index.html
+    - echo 'function initTerminal() {' >> dist/index.html
+    - echo 'const appName = document.getElementById("appName").value.trim();' >> dist/index.html
+    - echo 'const clientId = document.getElementById("clientId").value.trim();' >> dist/index.html
+    - echo 'const domain = document.getElementById("domain").value.trim();' >> dist/index.html
+    - echo 'const status = document.getElementById("status");' >> dist/index.html
+    - echo 'if (!appName || !clientId) { status.style.display = "block"; status.style.background = "#f8d7da"; status.style.color = "#721c24"; status.textContent = "Please fill in GitHub App Name and Client ID"; return; }' >> dist/index.html
+    - echo 'try { if (currentTerminal && typeof currentTerminal.destroy === "function") { currentTerminal.destroy(); }' >> dist/index.html
+    - echo 'const config = { githubAppName: appName, githubClientId: clientId }; if (domain) { config.backendDomain = domain; }' >> dist/index.html
+    - echo 'currentTerminal = new WebTerminalEmbed(config);' >> dist/index.html
+    - echo 'status.style.display = "block"; status.style.background = "#d4edda"; status.style.color = "#155724"; status.textContent = "✅ Terminal initialized! Look for the \">_\" button.";' >> dist/index.html
+    - echo '} catch (error) { status.style.display = "block"; status.style.background = "#f8d7da"; status.style.color = "#721c24"; status.textContent = "❌ Error: " + error.message; } }' >> dist/index.html
+    - echo '</script>' >> dist/index.html
+    - echo '</body></html>' >> dist/index.html
     - mkdir -p public/develop
     - cp -r dist/* public/develop/
   artifacts:
@@ -76,23 +162,66 @@ build-production:
     - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
     - echo "Release Tag ${CI_COMMIT_TAG}" >> dist/VERSION.txt
     - echo "Environment Production" >> dist/VERSION.txt
-    - echo '<!DOCTYPE html>' > dist/index.html
-    - echo '<html><head><title>Web Terminal Embed CDN</title></head>' >> dist/index.html
-    - echo '<body><h1>Web Terminal Embed CDN</h1>' >> dist/index.html
-    - echo '<h2>Production Release</h2>' >> dist/index.html
-    - echo "<p><strong>Version:</strong> $PROD_VERSION</p>" >> dist/index.html
-    - echo "<p><strong>Built:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</p>" >> dist/index.html
-    - echo '<h3>CDN URLs</h3>' >> dist/index.html
-    - echo '<p><code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
-    - echo '<p><code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@'$PROD_VERSION'/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
-    - echo '<h3>Usage</h3>' >> dist/index.html
-    - echo '<pre>&lt;script src="https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;</pre>' >> dist/index.html
-    - echo '<h3>Files</h3>' >> dist/index.html
+    # Create index.html using shared template
+    - *create_index_html
+    - echo '<div class="header">' >> dist/index.html
+    - echo '<h1>🖥️ Web Terminal Embed CDN</h1>' >> dist/index.html
+    - echo '<p>Production-ready CDN for embeddable web terminals</p>' >> dist/index.html
+    - echo '<span class="badge">'$PROD_VERSION'</span>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<div class="info">' >> dist/index.html
+    - echo '<h3>📦 CDN URLs</h3>' >> dist/index.html
+    - echo '<p><strong>Latest Stable:</strong> <code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<p><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@'$PROD_VERSION'/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<p><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@develop/dist/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '<p><strong>GitLab Pages:</strong> <code>https://'${CI_PROJECT_NAMESPACE}'.gitlab.io/'${CI_PROJECT_NAME}'/web-terminal-embed.min.js</code></p>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<h2>🚀 Quick Start</h2>' >> dist/index.html
+    - echo '<div class="code">&lt;script src="https://cdn.jsdelivr.net/gl/'${CI_PROJECT_NAMESPACE}'/'${CI_PROJECT_NAME}'@latest/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;<br>' >> dist/index.html
+    - echo '&lt;script&gt;<br>' >> dist/index.html
+    - echo 'const terminal = new WebTerminalEmbed({<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;githubAppName: "your-app-name",<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;githubClientId: "your-client-id",<br>' >> dist/index.html
+    - echo '&nbsp;&nbsp;backendDomain: "your-domain.com"<br>' >> dist/index.html
+    - echo '});<br>' >> dist/index.html
+    - echo '&lt;/script&gt;</div>' >> dist/index.html
+    - echo '<div class="demo-section">' >> dist/index.html
+    - echo '<h2>🧪 Live Demo</h2>' >> dist/index.html
+    - echo '<p>Configure and test the terminal embed:</p>' >> dist/index.html
+    - echo '<div class="form-group"><label>GitHub App Name:</label><input type="text" id="appName" value="demo-app" placeholder="your-github-app"></div>' >> dist/index.html
+    - echo '<div class="form-group"><label>GitHub Client ID:</label><input type="text" id="clientId" value="demo-client-id" placeholder="Ov23li..."></div>' >> dist/index.html
+    - echo '<div class="form-group"><label>Backend Domain (optional for localhost):</label><input type="text" id="domain" placeholder="yourdomain.com"></div>' >> dist/index.html
+    - echo '<button class="btn" onclick="initTerminal()">🚀 Initialize Terminal</button>' >> dist/index.html
+    - echo '<div id="status" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>' >> dist/index.html
+    - echo '</div>' >> dist/index.html
+    - echo '<h2>📁 Available Files</h2>' >> dist/index.html
     - echo '<ul>' >> dist/index.html
-    - echo '<li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a></li>' >> dist/index.html
-    - echo '<li><a href="web-terminal-embed.js">web-terminal-embed.js</a></li>' >> dist/index.html
-    - echo '<li><a href="VERSION.txt">VERSION.txt</a></li>' >> dist/index.html
-    - echo '</ul></body></html>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>' >> dist/index.html
+    - echo '<li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>' >> dist/index.html
+    - echo '<li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>' >> dist/index.html
+    - echo '</ul>' >> dist/index.html
+    - echo '<h2>📊 Version Information</h2>' >> dist/index.html
+    - echo '<ul>' >> dist/index.html
+    - echo '<li><strong>Version:</strong> '$PROD_VERSION'</li>' >> dist/index.html
+    - echo '<li><strong>Built:</strong> '$(date -u +"%Y-%m-%d %H:%M:%S UTC")'</li>' >> dist/index.html
+    - echo '<li><strong>Commit:</strong> '${CI_COMMIT_SHORT_SHA}'</li>' >> dist/index.html
+    - echo '</ul>' >> dist/index.html
+    - echo '<script src="web-terminal-embed.min.js"></script>' >> dist/index.html
+    - echo '<script>' >> dist/index.html
+    - echo 'let currentTerminal = null;' >> dist/index.html
+    - echo 'function initTerminal() {' >> dist/index.html
+    - echo 'const appName = document.getElementById("appName").value.trim();' >> dist/index.html
+    - echo 'const clientId = document.getElementById("clientId").value.trim();' >> dist/index.html
+    - echo 'const domain = document.getElementById("domain").value.trim();' >> dist/index.html
+    - echo 'const status = document.getElementById("status");' >> dist/index.html
+    - echo 'if (!appName || !clientId) { status.style.display = "block"; status.style.background = "#f8d7da"; status.style.color = "#721c24"; status.textContent = "Please fill in GitHub App Name and Client ID"; return; }' >> dist/index.html
+    - echo 'try { if (currentTerminal && typeof currentTerminal.destroy === "function") { currentTerminal.destroy(); }' >> dist/index.html
+    - echo 'const config = { githubAppName: appName, githubClientId: clientId }; if (domain) { config.backendDomain = domain; }' >> dist/index.html
+    - echo 'currentTerminal = new WebTerminalEmbed(config);' >> dist/index.html
+    - echo 'status.style.display = "block"; status.style.background = "#d4edda"; status.style.color = "#155724"; status.textContent = "✅ Terminal initialized! Look for the \">_\" button.";' >> dist/index.html
+    - echo '} catch (error) { status.style.display = "block"; status.style.background = "#f8d7da"; status.style.color = "#721c24"; status.textContent = "❌ Error: " + error.message; } }' >> dist/index.html
+    - echo '</script>' >> dist/index.html
+    - echo '</body></html>' >> dist/index.html
     - mkdir -p public
     - cp -r dist/* public/
   artifacts:
