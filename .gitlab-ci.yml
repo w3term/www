@@ -43,12 +43,19 @@ build-dev:
     - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
     - sed -i "s/{{IS_PRODUCTION}}/false/g" dist/index.html
     - sed -i "s/{{CDN_TAG}}/develop/g" dist/index.html
-    # Prepare for deployment
+    # Prepare for both GitLab Pages and jsDelivr
     - mkdir -p public/develop
     - cp -r dist/* public/develop/
+    # Also copy files to root dist/ for jsDelivr to find them
+    - cp -r dist/* ./
   artifacts:
     paths:
       - public/
+      - dist/
+      - web-terminal-embed.min.js
+      - web-terminal-embed.js
+      - VERSION.txt
+      - index.html
     expire_in: 7 days
   only:
     - develop
@@ -108,12 +115,19 @@ build-production:
     - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
     - sed -i "s/{{IS_PRODUCTION}}/true/g" dist/index.html
     - sed -i "s/{{CDN_TAG}}/latest/g" dist/index.html
-    # Prepare for deployment  
+    # Prepare for both GitLab Pages and jsDelivr
     - mkdir -p public
     - cp -r dist/* public/
+    # Also copy files to root for jsDelivr to find them
+    - cp -r dist/* ./
   artifacts:
     paths:
       - public/
+      - dist/
+      - web-terminal-embed.min.js
+      - web-terminal-embed.js
+      - VERSION.txt
+      - index.html
     expire_in: 30 days
   only:
     - tags
