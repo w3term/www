@@ -3,6 +3,7 @@ stages:
   - build-dev
   - release
   - build-prod
+  - deploy
 
 # Build development version when push on develop branch
 build-dev:
@@ -42,7 +43,7 @@ build-dev:
     - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
     - sed -i "s/{{IS_PRODUCTION}}/false/g" dist/index.html
     - sed -i "s/{{CDN_TAG}}/develop/g" dist/index.html
-    # Deploy to GitLab Pages
+    # Prepare for deployment
     - mkdir -p public/develop
     - cp -r dist/* public/develop/
   artifacts:
@@ -107,7 +108,7 @@ build-production:
     - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
     - sed -i "s/{{IS_PRODUCTION}}/true/g" dist/index.html
     - sed -i "s/{{CDN_TAG}}/latest/g" dist/index.html
-    # Deploy to GitLab Pages
+    # Prepare for deployment  
     - mkdir -p public
     - cp -r dist/* public/
   artifacts:
@@ -115,4 +116,17 @@ build-production:
       - public/
     expire_in: 30 days
   only:
+    - tags
+
+# Deploy to GitLab Pages - this job name MUST be 'pages'
+pages:
+  stage: deploy
+  script:
+    - echo "Deploying to GitLab Pages"
+    - ls -la public/ || echo "No public directory found"
+  artifacts:
+    paths:
+      - public
+  only:
+    - develop
     - tags
