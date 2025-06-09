@@ -30,12 +30,11 @@ build-production:
     - npm install -g terser
     - mkdir -p dist
   script:
-    - PROD_VERSION="$CI_COMMIT_TAG"
-    - echo "Building production version $PROD_VERSION"
+    - echo "Building production version $CI_COMMIT_TAG"
     # Create JS file with header
     - echo "/**" > dist/terminal.js
     - echo " * Web Terminal Embed" >> dist/terminal.js
-    - echo " * Version $PROD_VERSION" >> dist/terminal.js
+    - echo " * Version $CI_COMMIT_TAG" >> dist/terminal.js
     - echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
     - echo " * Commit ${CI_COMMIT_SHA}" >> dist/terminal.js
     - echo " * Release Tag ${CI_COMMIT_TAG}" >> dist/terminal.js
@@ -45,7 +44,7 @@ build-production:
     - terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
     - ls dist
     # Create VERSION.txt
-    - echo "Version $PROD_VERSION" > dist/VERSION.txt
+    - echo "Version $CI_COMMIT_TAG" > dist/VERSION.txt
     - echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
     - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
     - echo "Release Tag ${CI_COMMIT_TAG}" >> dist/VERSION.txt
@@ -54,12 +53,6 @@ build-production:
     # Prepare for GitLab Pages and npm publishing
     - mkdir -p public
     - cp -r dist/* public/
-    # Copy built files to root for npm publishing
-    - cp dist/terminal.js ./
-    - cp dist/terminal.min.js ./
-    - cp dist/VERSION.txt ./
-    - ls dist
-    - ls public
   artifacts:
     paths:
       - public/
@@ -86,11 +79,14 @@ publish-npm:
   before_script:
     - npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
     - npm config set registry https://registry.npmjs.org/
+    # Copy files from dist to root for npm publish
+    - cp dist/terminal.js ./
+    - cp dist/terminal.min.js ./
+    - cp dist/VERSION.txt ./ 
   script:
     - echo "Publishing production version $CI_COMMIT_TAG to npm"
     - npm version $CI_COMMIT_TAG --no-git-tag-version --allow-same-version
     - ls -al
-    - ls -la terminal.min.js terminal.js
     - echo "Files to be published:"
     - cat package.json | grep -A 10 '"files"'
     - npm publish --access public
