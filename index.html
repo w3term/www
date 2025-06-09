@@ -276,6 +276,20 @@
 
         function fetchPackageInfo() {
             console.log('Fetching package information...');
+            
+            // Check if we're running locally by trying to load local terminal.js
+            var isLocal = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+            
+            if (isLocal) {
+                console.log('Running locally - using local terminal.js');
+                updateUI('local-dev');
+                loadLocalTerminalScript();
+                return;
+            }
+            
+            // Running on server - fetch from npm
             fetch('https://registry.npmjs.org/@web-terminal/terminal')
                 .then(function(response) {
                     return response.json();
@@ -297,17 +311,36 @@
         function updateUI(version) {
             document.getElementById('version-badge').textContent = version;
             
-            var usageCode = '<script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"><\/script>\n\n<script>\nconst terminal = new WebTerminalEmbed({\n    githubAppName: \'your-app-name\',\n    githubClientId: \'your-client-id\',\n    backendDomain: \'your-domain.com\'\n});\n<\/script>';
-            document.getElementById('usage-code').textContent = usageCode;
+            var usageCode, cdnUrls;
             
-            var cdnUrls = document.getElementById('cdn-urls');
-            cdnUrls.innerHTML = 
-                '<li><strong>Latest:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>' +
-                '<li><strong>Specific Version:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@' + version + '/terminal.min.js</code></li>' +
-                '<li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>';
+            if (version === 'local-dev') {
+                // Local development mode
+                usageCode = '<script src="./terminal.js"><\/script>\n\n<script>\nconst terminal = new WebTerminalEmbed({\n    githubAppName: \'your-app-name\',\n    githubClientId: \'your-client-id\',\n    backendDomain: \'your-domain.com\'\n});\n<\/script>';
+                
+                cdnUrls = 
+                    '<li><strong>Local Development:</strong> <code>./terminal.js</code></li>' +
+                    '<li><strong>Production CDN:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>' +
+                    '<li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>';
+            } else {
+                // Production mode
+                usageCode = '<script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@' + version + '/terminal.min.js"><\/script>\n\n<script>\nconst terminal = new WebTerminalEmbed({\n    githubAppName: \'your-app-name\',\n    githubClientId: \'your-client-id\',\n    backendDomain: \'your-domain.com\'\n});\n<\/script>';
+                
+                cdnUrls = 
+                    '<li><strong>Latest:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>' +
+                    '<li><strong>Specific Version:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@' + version + '/terminal.min.js</code></li>' +
+                    '<li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>';
+            }
+            
+            document.getElementById('usage-code').textContent = usageCode;
+            document.getElementById('cdn-urls').innerHTML = cdnUrls;
             
             var packageInfoDiv = document.getElementById('package-info');
-            if (packageInfo) {
+            if (version === 'local-dev') {
+                packageInfoDiv.innerHTML = 
+                    '<strong>Version:</strong> Local Development<br>' +
+                    '<strong>Source:</strong> ./terminal.js<br>' +
+                    '<strong>Mode:</strong> Development';
+            } else if (packageInfo) {
                 var publishDate = new Date(packageInfo.time[version]).toLocaleDateString();
                 packageInfoDiv.innerHTML = 
                     '<strong>Version:</strong> ' + version + '<br>' +
@@ -317,6 +350,20 @@
             } else {
                 packageInfoDiv.innerHTML = '<strong>Version:</strong> ' + version;
             }
+        }
+
+        function loadLocalTerminalScript() {
+            var script = document.createElement('script');
+            script.src = './terminal.js';  // Use local file
+            script.onload = function() {
+                console.log('Local terminal script loaded successfully');
+            };
+            script.onerror = function() {
+                console.error('Failed to load local terminal script, falling back to npm');
+                // Fallback to npm version if local file doesn't exist
+                loadTerminalScript('latest');
+            };
+            document.head.appendChild(script);
         }
 
         function loadTerminalScript(version) {
