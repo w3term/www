@@ -159,11 +159,6 @@ publish-npm:
     - npm publish --access public
     - echo "✅ Production package published successfully!"
     - echo "📦 Available at: https://www.npmjs.com/package/@web-terminal/terminal"
-    - echo "🚀 jsDelivr CDN URLs:"
-    - echo "   https://cdn.jsdelivr.net/npm/@web-terminal/terminal@$CI_COMMIT_TAG/terminal.min.js"
-    - echo "   https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"
-    - echo ""
-    - echo "💡 Usage: Add script tag to your HTML"
   dependencies:
     - build-production
   only:
