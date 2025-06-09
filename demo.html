@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Terminal Embed CDN</title>
+    <title>Web Terminal</title>
     <style>
         * {
             margin: 0;
@@ -239,8 +239,8 @@
         </div>
 
         <div class="header">
-            <h1>🖥️ Web Terminal Embed</h1>
-            <p>Interactive demo and CDN distribution</p>
+            <h1>🖥️ Web Terminal</h1>
+            <p>Interactive demo</p>
             <span class="badge" id="version-badge">{{VERSION}}</span>
         </div>
 
@@ -335,7 +335,7 @@ const terminal = new WebTerminalEmbed({
                 <!-- GitLab Pages Content -->
                 <div id="gitlab-content" class="cdn-content">
                     <h3>🚀 Development Usage</h3>
-                    <div class="code-block">&lt;script src="https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/web-terminal-embed.min.js"&gt;&lt;/script&gt;
+                    <div class="code-block">&lt;script src="https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/terminal.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
 const terminal = new WebTerminalEmbed({
     githubAppName: 'your-app-name',
