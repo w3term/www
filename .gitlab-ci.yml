@@ -157,8 +157,7 @@ publish-npm:
     - echo "Files to be published:"
     - cat package.json | grep -A 10 '"files"'
     - npm publish --access public
-    - echo "✅ Production package published successfully!"
-    - echo "📦 Available at: https://www.npmjs.com/package/@web-terminal/terminal"
+    - echo "Production package published successfully!"
   dependencies:
     - build-production
   only:
