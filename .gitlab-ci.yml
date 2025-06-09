@@ -9,7 +9,7 @@ stages:
 # Build development version when push on develop branch
 build-dev:
   stage: build-dev
-  image: node:20-alpine
+  image: node:18-alpine
   before_script:
     - npm install -g terser
     - mkdir -p dist
@@ -75,7 +75,7 @@ release:
 # Build production version on each new tag (created by semantic-release)
 build-production:
   stage: build-prod
-  image: node:20-alpine
+  image: node:18-alpine
   before_script:
     - npm install -g terser
     - mkdir -p dist
@@ -152,13 +152,10 @@ publish-npm:
     - npm config set registry https://registry.npmjs.org/
   script:
     - echo "Publishing production version $CI_COMMIT_TAG to npm"
-    # Update package.json with correct version
     - npm version $CI_COMMIT_TAG --no-git-tag-version --allow-same-version
-    # Verify the built files exist
     - ls -la terminal.min.js terminal.js
     - echo "Files to be published:"
     - cat package.json | grep -A 10 '"files"'
-    # Publish to npm with default 'latest' tag
     - npm publish --access public
     - echo "✅ Production package published successfully!"
     - echo "📦 Available at: https://www.npmjs.com/package/@web-terminal/terminal"
@@ -166,7 +163,7 @@ publish-npm:
     - echo "   https://cdn.jsdelivr.net/npm/@web-terminal/terminal@$CI_COMMIT_TAG/terminal.min.js"
     - echo "   https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"
     - echo ""
-    - echo "ℹ️  To install: npm install @web-terminal/terminal"
+    - echo "💡 Usage: Add script tag to your HTML"
   dependencies:
     - build-production
   only:
