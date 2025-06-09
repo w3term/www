@@ -198,6 +198,37 @@
             font-size: 12px;
             overflow-x: auto;
         }
+
+        .cdn-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        .cdn-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .cdn-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .cdn-content {
+            display: none;
+        }
+
+        .cdn-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -275,8 +306,16 @@ Built: {{BUILD_DATE}}</pre>
             <div class="info-panel">
                 <h2>📚 CDN Information</h2>
                 
-                <h3>🚀 Usage</h3>
-                <div class="code-block">&lt;script src="https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@{{CDN_TAG}}/dist/web-terminal-embed.min.js"&gt;&lt;/script&gt;
+                <!-- CDN Tabs -->
+                <div class="cdn-tabs">
+                    <button class="cdn-tab active" onclick="showCdnTab('npm')">📦 npm/jsDelivr</button>
+                    <button class="cdn-tab" onclick="showCdnTab('gitlab')">🦊 GitLab Pages</button>
+                </div>
+
+                <!-- npm/jsDelivr Content -->
+                <div id="npm-content" class="cdn-content active">
+                    <h3>🚀 Production Usage (Recommended)</h3>
+                    <div class="code-block">&lt;script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
 const terminal = new WebTerminalEmbed({
     githubAppName: 'your-app-name',
@@ -284,20 +323,43 @@ const terminal = new WebTerminalEmbed({
     backendDomain: 'your-domain.com'
 });
 &lt;/script&gt;</div>
-                
-                <h3>📦 CDN URLs</h3>
-                <ul>
-                    <li><strong>Latest Stable:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@latest/dist/web-terminal-embed.min.js</code></li>
-                    <li><strong>Development:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@develop/dist/web-terminal-embed.min.js</code></li>
-                    <li><strong>This Version:</strong> <code>https://cdn.jsdelivr.net/gl/{{NAMESPACE}}/{{PROJECT}}@{{CDN_TAG}}/dist/web-terminal-embed.min.js</code></li>
-                </ul>
+                    
+                    <h3>📦 npm Package</h3>
+                    <div class="code-block">npm install @web-terminal/terminal</div>
+                    
+                    <h3>🔗 CDN URLs</h3>
+                    <ul>
+                        <li><strong>Latest:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>
+                        <li><strong>Specific Version:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@1.0.0/terminal.min.js</code></li>
+                        <li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>
+                    </ul>
+                </div>
 
-                <h3>📁 Available Files</h3>
-                <ul>
-                    <li><a href="web-terminal-embed.min.js">web-terminal-embed.min.js</a> (production build)</li>
-                    <li><a href="web-terminal-embed.js">web-terminal-embed.js</a> (source with comments)</li>
-                    <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
-                </ul>
+                <!-- GitLab Pages Content -->
+                <div id="gitlab-content" class="cdn-content">
+                    <h3>🚀 Development Usage</h3>
+                    <div class="code-block">&lt;script src="https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/web-terminal-embed.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+const terminal = new WebTerminalEmbed({
+    githubAppName: 'your-app-name',
+    githubClientId: 'your-client-id',
+    backendDomain: 'your-domain.com'
+});
+&lt;/script&gt;</div>
+                    
+                    <h3>📁 Available Files</h3>
+                    <ul>
+                        <li><a href="terminal.min.js">terminal.min.js</a> (production build)</li>
+                        <li><a href="terminal.js">terminal.js</a> (source with comments)</li>
+                        <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
+                    </ul>
+
+                    <h3>🔗 GitLab Pages URLs</h3>
+                    <ul>
+                        <li><strong>Development:</strong> <code>https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/develop/terminal.min.js</code></li>
+                        <li><strong>This Version:</strong> <code>https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/terminal.min.js</code></li>
+                    </ul>
+                </div>
 
                 <h3>🔧 Terminal Features</h3>
                 <ul>
@@ -313,7 +375,7 @@ const terminal = new WebTerminalEmbed({
     </div>
 
     <!-- Load the terminal script -->
-    <script src="web-terminal-embed.min.js"></script>
+    <script src="terminal.min.js"></script>
     
     <script>
         var currentTerminal = null;
@@ -335,6 +397,24 @@ const terminal = new WebTerminalEmbed({
                 initializeTerminal();
             });
         });
+
+        function showCdnTab(tabName) {
+            // Hide all content
+            var contents = document.querySelectorAll('.cdn-content');
+            var tabs = document.querySelectorAll('.cdn-tab');
+            
+            contents.forEach(function(content) {
+                content.classList.remove('active');
+            });
+            
+            tabs.forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected content and tab
+            document.getElementById(tabName + '-content').classList.add('active');
+            event.target.classList.add('active');
+        }
 
         function initializeTerminal() {
             var status = document.getElementById('status');

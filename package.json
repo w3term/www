@@ -1,0 +1,39 @@
+{
+    "name": "@web-terminal/terminal",
+    "version": "1.0.0",
+    "description": "Embeddable web terminal component",
+    "main": "terminal.js",
+    "browser": "terminal.min.js",
+    "jsdelivr": "terminal.min.js",
+    "unpkg": "terminal.min.js",
+    "files": [
+      "terminal.js",
+      "terminal.min.js",
+      "VERSION.txt",
+      "index.html"
+    ],
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://gitlab.com/web-terminal/www.git"
+    },
+    "keywords": [
+      "terminal",
+      "web",
+      "embed",
+      "console",
+      "javascript",
+      "xterm"
+    ],
+    "author": "Your Name luc.juggery@gmail.com",
+    "license": "MIT",
+    "bugs": {
+      "url": "https://gitlab.com/web-terminal/www/-/issues"
+    },
+    "homepage": "https://web-terminal.gitlab.io/www/",
+    "publishConfig": {
+      "access": "public"
+    }
+  }
