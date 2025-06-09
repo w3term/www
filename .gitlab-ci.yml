@@ -24,7 +24,7 @@ build-dev:
     - echo " * Commit ${CI_COMMIT_SHA}" >> dist/terminal.js
     - echo " * Branch ${CI_COMMIT_REF_NAME}" >> dist/terminal.js
     - echo " */" >> dist/terminal.js
-    - cat web-terminal.js >> dist/terminal.js
+    - cat terminal.js >> dist/terminal.js
     # Minify
     - terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
     # Create VERSION.txt
@@ -90,7 +90,7 @@ build-production:
     - echo " * Commit ${CI_COMMIT_SHA}" >> dist/terminal.js
     - echo " * Release Tag ${CI_COMMIT_TAG}" >> dist/terminal.js
     - echo " */" >> dist/terminal.js
-    - cat web-terminal.js >> dist/terminal.js
+    - cat terminal.js >> dist/terminal.js
     # Minify
     - terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
     # Create VERSION.txt
