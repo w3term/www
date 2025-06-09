@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Terminal</title>
+    <title>Web Terminal - Demo</title>
     <style>
         * {
             margin: 0;
@@ -47,20 +47,6 @@
             border-radius: 12px;
             font-size: 12px;
             margin-left: 10px;
-        }
-
-        .dev-badge {
-            background: #ff6b6b;
-        }
-
-        .dev-banner {
-            background: #ff6b6b;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: bold;
         }
 
         .demo-grid {
@@ -176,9 +162,10 @@
             font-size: 13px;
             margin: 15px 0;
             overflow-x: auto;
+            white-space: pre-wrap;
         }
 
-        .current-config {
+        .version-info {
             background: #e3f2fd;
             border: 1px solid #90caf9;
             border-radius: 6px;
@@ -186,62 +173,22 @@
             margin-top: 20px;
         }
 
-        .current-config h4 {
+        .version-info h4 {
             color: #1976d2;
             margin-bottom: 10px;
         }
 
-        .current-config pre {
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            overflow-x: auto;
-        }
-
-        .cdn-tabs {
-            display: flex;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #e1e5e9;
-        }
-
-        .cdn-tab {
-            padding: 10px 15px;
-            cursor: pointer;
-            background: none;
-            border: none;
-            font-size: 14px;
-            color: #666;
-            border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
-        }
-
-        .cdn-tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            font-weight: 600;
-        }
-
-        .cdn-content {
-            display: none;
-        }
-
-        .cdn-content.active {
-            display: block;
+        .loading {
+            opacity: 0.6;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Development banner - shown only for dev builds -->
-        <div class="dev-banner" id="dev-banner" style="display: none;">
-            🚧 DEVELOPMENT BUILD - NOT FOR PRODUCTION USE 🚧
-        </div>
-
         <div class="header">
             <h1>🖥️ Web Terminal</h1>
             <p>Interactive demo</p>
-            <span class="badge" id="version-badge">{{VERSION}}</span>
+            <span class="badge" id="version-badge">Loading...</span>
         </div>
 
         <div class="demo-grid">
@@ -292,132 +239,111 @@
                     <div id="status" class="status"></div>
                 </form>
 
-                <div class="current-config">
-                    <h4>📋 Build Information</h4>
-                    <pre>Version: {{VERSION}}
-Environment: {{ENVIRONMENT}}
-Branch: {{BRANCH}}
-Commit: {{COMMIT}}
-Built: {{BUILD_DATE}}</pre>
+                <div class="version-info">
+                    <h4>📦 Package Information</h4>
+                    <div id="package-info">Loading package information...</div>
                 </div>
             </div>
 
             <!-- Information Panel -->
             <div class="info-panel">
-                <h2>📚 CDN Information</h2>
+                <h2>📚 Usage Information</h2>
                 
-                <!-- CDN Tabs -->
-                <div class="cdn-tabs">
-                    <button class="cdn-tab active" onclick="showCdnTab('npm')">📦 npm/jsDelivr</button>
-                    <button class="cdn-tab" onclick="showCdnTab('gitlab')">🦊 GitLab Pages</button>
-                </div>
-
-                <!-- npm/jsDelivr Content -->
-                <div id="npm-content" class="cdn-content active">
-                    <h3>🚀 Production Usage (Recommended)</h3>
-                    <div class="code-block">&lt;script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-const terminal = new WebTerminalEmbed({
-    githubAppName: 'your-app-name',
-    githubClientId: 'your-client-id',
-    backendDomain: 'your-domain.com'
-});
-&lt;/script&gt;</div>
-                    
-                    <h3>🔗 CDN URLs</h3>
-                    <ul>
-                        <li><strong>Latest:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>
-                        <li><strong>Specific Version:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@1.0.0/terminal.min.js</code></li>
-                        <li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>
-                    </ul>
-                </div>
-
-                <!-- GitLab Pages Content -->
-                <div id="gitlab-content" class="cdn-content">
-                    <h3>🚀 Development Usage</h3>
-                    <div class="code-block">&lt;script src="https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/terminal.min.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-const terminal = new WebTerminalEmbed({
-    githubAppName: 'your-app-name',
-    githubClientId: 'your-client-id',
-    backendDomain: 'your-domain.com'
-});
-&lt;/script&gt;</div>
-                    
-                    <h3>📁 Available Files</h3>
-                    <ul>
-                        <li><a href="terminal.min.js">terminal.min.js</a> (production build)</li>
-                        <li><a href="terminal.js">terminal.js</a> (source with comments)</li>
-                        <li><a href="VERSION.txt">VERSION.txt</a> (build information)</li>
-                    </ul>
-
-                    <h3>🔗 GitLab Pages URLs</h3>
-                    <ul>
-                        <li><strong>Development:</strong> <code>https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/develop/terminal.min.js</code></li>
-                        <li><strong>This Version:</strong> <code>https://{{NAMESPACE}}.gitlab.io/{{PROJECT}}/{{CDN_TAG}}/terminal.min.js</code></li>
-                    </ul>
-                </div>
-
-                <h3>🔧 Terminal Features</h3>
-                <ul>
-                    <li>SSH access to Linux VMs</li>
-                    <li>Multiple terminal tabs</li>
-                    <li>Resizable interface</li>
-                    <li>GitHub OAuth authentication</li>
-                    <li>Session management</li>
-                    <li>Auto-reconnection</li>
+                <h3>🚀 Usage</h3>
+                <div class="code-block" id="usage-code">Loading...</div>
+                
+                <h3>🔗 CDN URLs</h3>
+                <ul id="cdn-urls">
+                    <li>Loading...</li>
                 </ul>
             </div>
         </div>
     </div>
 
-    <!-- Load the terminal script -->
-    <script src="terminal.min.js"></script>
+    <!-- Terminal script will be loaded dynamically -->
     
     <script>
         var currentTerminal = null;
+        var packageInfo = null;
 
-        // Show development banner if this is a dev build
         document.addEventListener('DOMContentLoaded', function() {
-            var isProduction = '{{IS_PRODUCTION}}' === 'true';
-            var versionBadge = document.getElementById('version-badge');
-            var devBanner = document.getElementById('dev-banner');
-            
-            if (!isProduction) {
-                devBanner.style.display = 'block';
-                versionBadge.className = 'badge dev-badge';
-            }
-
-            // Form submission handler
+            fetchPackageInfo();
             document.getElementById('terminalConfig').addEventListener('submit', function(e) {
                 e.preventDefault();
                 initializeTerminal();
             });
         });
 
-        function showCdnTab(tabName) {
-            // Hide all content
-            var contents = document.querySelectorAll('.cdn-content');
-            var tabs = document.querySelectorAll('.cdn-tab');
+        function fetchPackageInfo() {
+            console.log('Fetching package information...');
+            fetch('https://registry.npmjs.org/@web-terminal/terminal')
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    packageInfo = data;
+                    var latestVersion = data['dist-tags'].latest;
+                    console.log('Latest version:', latestVersion);
+                    updateUI(latestVersion);
+                    loadTerminalScript(latestVersion);
+                })
+                .catch(function(error) {
+                    console.error('Error fetching package info:', error);
+                    updateUI('latest');
+                    loadTerminalScript('latest');
+                });
+        }
+
+        function updateUI(version) {
+            document.getElementById('version-badge').textContent = version;
             
-            contents.forEach(function(content) {
-                content.classList.remove('active');
-            });
+            var usageCode = '<script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"><\/script>\n\n<script>\nconst terminal = new WebTerminalEmbed({\n    githubAppName: \'your-app-name\',\n    githubClientId: \'your-client-id\',\n    backendDomain: \'your-domain.com\'\n});\n<\/script>';
+            document.getElementById('usage-code').textContent = usageCode;
             
-            tabs.forEach(function(tab) {
-                tab.classList.remove('active');
-            });
+            var cdnUrls = document.getElementById('cdn-urls');
+            cdnUrls.innerHTML = 
+                '<li><strong>Latest:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js</code></li>' +
+                '<li><strong>Specific Version:</strong> <code>https://cdn.jsdelivr.net/npm/@web-terminal/terminal@' + version + '/terminal.min.js</code></li>' +
+                '<li><strong>Package Info:</strong> <a href="https://www.npmjs.com/package/@web-terminal/terminal" target="_blank">npmjs.com/package/@web-terminal/terminal</a></li>';
             
-            // Show selected content and tab
-            document.getElementById(tabName + '-content').classList.add('active');
-            event.target.classList.add('active');
+            var packageInfoDiv = document.getElementById('package-info');
+            if (packageInfo) {
+                var publishDate = new Date(packageInfo.time[version]).toLocaleDateString();
+                packageInfoDiv.innerHTML = 
+                    '<strong>Version:</strong> ' + version + '<br>' +
+                    '<strong>Published:</strong> ' + publishDate + '<br>' +
+                    '<strong>Description:</strong> ' + (packageInfo.description || 'Web Terminal Embed') + '<br>' +
+                    '<strong>License:</strong> ' + (packageInfo.license || 'MIT');
+            } else {
+                packageInfoDiv.innerHTML = '<strong>Version:</strong> ' + version;
+            }
+        }
+
+        function loadTerminalScript(version) {
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@web-terminal/terminal@' + version + '/terminal.min.js';
+            script.onload = function() {
+                console.log('Terminal script loaded successfully');
+            };
+            script.onerror = function() {
+                console.error('Failed to load terminal script');
+                var status = document.getElementById('status');
+                status.textContent = 'Failed to load terminal library';
+                status.className = 'status error';
+                status.style.display = 'block';
+            };
+            document.head.appendChild(script);
         }
 
         function initializeTerminal() {
             var status = document.getElementById('status');
             var btn = document.getElementById('initTerminal');
             
-            // Get form values
+            if (typeof WebTerminalEmbed === 'undefined') {
+                showStatus('❌ Terminal library not loaded yet. Please wait and try again.', 'error');
+                return;
+            }
+            
             var config = {
                 githubAppName: document.getElementById('githubAppName').value.trim(),
                 githubClientId: document.getElementById('githubClientId').value.trim(),
@@ -427,24 +353,20 @@ const terminal = new WebTerminalEmbed({
                       document.getElementById('debug').value === 'true'
             };
 
-            // Validate required fields
             if (!config.githubAppName || !config.githubClientId) {
                 showStatus('Please fill in required fields (GitHub App Name and Client ID)', 'error');
                 return;
             }
 
-            // Update UI
             btn.disabled = true;
             btn.textContent = '⏳ Initializing...';
             showStatus('Initializing terminal...', 'success');
 
             try {
-                // Destroy existing terminal if any
                 if (currentTerminal && typeof currentTerminal.destroy === 'function') {
                     currentTerminal.destroy();
                 }
 
-                // Create new terminal
                 currentTerminal = new WebTerminalEmbed(config);
                 
                 showStatus('✅ Terminal initialized successfully! Look for the ">_" button in the bottom-right corner.', 'success');
@@ -464,7 +386,6 @@ const terminal = new WebTerminalEmbed({
             status.className = 'status ' + type;
             status.style.display = 'block';
             
-            // Auto-hide success messages after 5 seconds
             if (type === 'success') {
                 setTimeout(function() {
                     status.style.display = 'none';

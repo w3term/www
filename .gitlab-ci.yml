@@ -1,59 +1,9 @@
 # .gitlab-ci.yml
 stages:
-  - build-dev
   - release
   - build-prod
   - deploy
   - publish
-
-# Build development version when push on develop branch
-build-dev:
-  stage: build-dev
-  image: node:18-alpine
-  before_script:
-    - npm install -g terser
-    - mkdir -p dist
-  script:
-    - DEV_VERSION="develop-${CI_COMMIT_SHORT_SHA}"
-    - echo "Building development version $DEV_VERSION"
-    # Create JS file with header
-    - echo "/**" > dist/terminal.js
-    - echo " * Web Terminal Embed" >> dist/terminal.js
-    - echo " * Version $DEV_VERSION" >> dist/terminal.js
-    - echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
-    - echo " * Commit ${CI_COMMIT_SHA}" >> dist/terminal.js
-    - echo " * Branch ${CI_COMMIT_REF_NAME}" >> dist/terminal.js
-    - echo " */" >> dist/terminal.js
-    - cat terminal.js >> dist/terminal.js
-    # Minify
-    - terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
-    # Create VERSION.txt
-    - echo "Version $DEV_VERSION" > dist/VERSION.txt
-    - echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
-    - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
-    - echo "Branch ${CI_COMMIT_REF_NAME}" >> dist/VERSION.txt
-    - echo "Environment Development" >> dist/VERSION.txt
-    # Copy demo.html and replace placeholders for development
-    - cp demo.html dist/index.html
-    - sed -i "s/{{VERSION}}/$DEV_VERSION/g" dist/index.html
-    - sed -i "s/{{ENVIRONMENT}}/Development/g" dist/index.html
-    - sed -i "s/{{BRANCH}}/${CI_COMMIT_REF_NAME}/g" dist/index.html
-    - sed -i "s/{{COMMIT}}/${CI_COMMIT_SHORT_SHA}/g" dist/index.html
-    - sed -i "s/{{BUILD_DATE}}/$(date -u +"%Y-%m-%d %H:%M:%S UTC")/g" dist/index.html
-    - sed -i "s/{{NAMESPACE}}/${CI_PROJECT_NAMESPACE}/g" dist/index.html
-    - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
-    - sed -i "s/{{IS_PRODUCTION}}/false/g" dist/index.html
-    - sed -i "s/{{CDN_TAG}}/develop/g" dist/index.html
-    # Prepare for GitLab Pages only
-    - mkdir -p public/develop
-    - cp -r dist/* public/develop/
-  artifacts:
-    paths:
-      - public/
-      - dist/
-    expire_in: 7 days
-  only:
-    - develop
 
 # New release tag only created when commit done on main branch
 release:
@@ -90,7 +40,7 @@ build-production:
     - echo " * Commit ${CI_COMMIT_SHA}" >> dist/terminal.js
     - echo " * Release Tag ${CI_COMMIT_TAG}" >> dist/terminal.js
     - echo " */" >> dist/terminal.js
-    - cat terminal.js >> dist/terminal.js
+    - cat web-terminal.js >> dist/terminal.js
     # Minify
     - terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
     # Create VERSION.txt
@@ -98,18 +48,8 @@ build-production:
     - echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
     - echo "Commit ${CI_COMMIT_SHA}" >> dist/VERSION.txt
     - echo "Release Tag ${CI_COMMIT_TAG}" >> dist/VERSION.txt
-    - echo "Environment Production" >> dist/VERSION.txt
-    # Copy demo.html and replace placeholders for production
-    - cp demo.html dist/index.html
-    - sed -i "s/{{VERSION}}/$PROD_VERSION/g" dist/index.html
-    - sed -i "s/{{ENVIRONMENT}}/Production/g" dist/index.html
-    - sed -i "s/{{BRANCH}}/main/g" dist/index.html
-    - sed -i "s/{{COMMIT}}/${CI_COMMIT_SHORT_SHA}/g" dist/index.html
-    - sed -i "s/{{BUILD_DATE}}/$(date -u +"%Y-%m-%d %H:%M:%S UTC")/g" dist/index.html
-    - sed -i "s/{{NAMESPACE}}/${CI_PROJECT_NAMESPACE}/g" dist/index.html
-    - sed -i "s/{{PROJECT}}/${CI_PROJECT_NAME}/g" dist/index.html
-    - sed -i "s/{{IS_PRODUCTION}}/true/g" dist/index.html
-    - sed -i "s/{{CDN_TAG}}/latest/g" dist/index.html
+    # Copy index.html
+    - cp index.html dist/index.html
     # Prepare for GitLab Pages and npm publishing
     - mkdir -p public
     - cp -r dist/* public/
@@ -117,16 +57,10 @@ build-production:
     - cp dist/terminal.js ./
     - cp dist/terminal.min.js ./
     - cp dist/VERSION.txt ./
-    - cp dist/index.html ./
   artifacts:
     paths:
       - public/
       - dist/
-      - terminal.js
-      - terminal.min.js
-      - VERSION.txt
-      - index.html
-    expire_in: 30 days
   only:
     - tags
 
@@ -140,7 +74,6 @@ pages:
     paths:
       - public
   only:
-    - develop
     - tags
 
 # Publish production releases to npm for automatic jsDelivr availability
@@ -158,6 +91,10 @@ publish-npm:
     - cat package.json | grep -A 10 '"files"'
     - npm publish --access public
     - echo "Production package published successfully!"
+    - echo "Available at https://www.npmjs.com/package/@web-terminal/terminal"
+    - echo "jsDelivr CDN URLs:"
+    - echo "https://cdn.jsdelivr.net/npm/@web-terminal/terminal@$CI_COMMIT_TAG/terminal.min.js"
+    - echo "https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"
   dependencies:
     - build-production
   only:
