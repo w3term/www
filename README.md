@@ -40,7 +40,3 @@ const terminal = new WebTerminalEmbed({
 - GitHub OAuth authentication
 - Session management
 - Auto-reconnection
-
-## License
-
-MIT
