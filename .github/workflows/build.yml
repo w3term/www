@@ -1,58 +1,91 @@
 name: Build Production
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
 
 permissions:
-  contents: read
-  actions: read
+  contents: write
 
 jobs:
-  build-production:
+  build:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+          fetch-depth: 0
+          tags: true
 
-      - name: Set up Node.js
+      - name: Fetch tags
+        if: github.event_name == 'workflow_run'
+        run: git fetch --tags --force
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install terser
+      - name: Install Terser
         run: npm install -g terser
 
-      - name: Prepare dist directory
+      - name: Prepare dist folder
         run: mkdir -p dist
 
-      - name: Build production version
+      - name: Build production bundle
+        id: build
         run: |
-          echo "Building production version $GITHUB_REF_NAME"
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          else
+            TAG_NAME="dev-${GITHUB_SHA::7}"
+          fi
+
+          echo "Building version $TAG_NAME"
+
           echo "/**" > dist/terminal.js
           echo " * Web Terminal Embed" >> dist/terminal.js
-          echo " * Version $GITHUB_REF_NAME" >> dist/terminal.js
+          echo " * Version $TAG_NAME" >> dist/terminal.js
           echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
-          echo " * Commit $GITHUB_SHA" >> dist/terminal.js
-          echo " * Release Tag $GITHUB_REF_NAME" >> dist/terminal.js
+          echo " * Commit ${GITHUB_SHA}" >> dist/terminal.js
           echo " */" >> dist/terminal.js
           cat terminal.js >> dist/terminal.js
+
+          # Minify
           terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
-          echo "Version $GITHUB_REF_NAME" > dist/VERSION.txt
+
+          # Metadata
+          echo "Version $TAG_NAME" > dist/VERSION.txt
           echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
-          echo "Commit $GITHUB_SHA" >> dist/VERSION.txt
-          echo "Release Tag $GITHUB_REF_NAME" >> dist/VERSION.txt
+          echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
+          echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
+
           cp index.html dist/index.html
           mkdir -p public
           cp -r dist/* public/
-          ls -l dist
 
-      - name: Upload build artifact
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: production-build
+          name: w3term-dist
           path: |
             dist/
             public/
+
+      - name: Attach artifacts to release
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_CI }}
+        run: |
+          TAG_NAME=${{ steps.build.outputs.tag_name }}
+          echo "Attaching built artifacts to release $TAG_NAME"
+          
+          zip -r w3term-$TAG_NAME.zip dist
+          gh release upload "$TAG_NAME" "w3term-$TAG_NAME.zip" --repo ${{ github.repository }} --clobber

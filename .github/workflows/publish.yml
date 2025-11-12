@@ -8,47 +8,48 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish-npm:
+  publish:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: Download build artifact
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: production-build
+          name: w3term-dist
           path: dist
 
-      - name: Prepare files for npm
+      - name: Configure npm
+        run: |
+          npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+          npm config set registry https://registry.npmjs.org/
+
+      - name: Prepare package files
         run: |
           cp dist/terminal.js ./
           cp dist/terminal.min.js ./
           cp dist/VERSION.txt ./
-          ls -al
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "Publishing production version to npm"
-          VERSION_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "Detected version: $VERSION_TAG"
-          npm version $VERSION_TAG --no-git-tag-version --allow-same-version
+          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Publishing version $TAG_NAME to npm"
+          npm version $TAG_NAME --no-git-tag-version --allow-same-version
           npm publish --access public
-          echo "✅ Published successfully!"
-          echo "📦 https://www.npmjs.com/package/@w3term/terminal"
-          echo "🌐 jsDelivr CDN URLs:"
-          echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@$VERSION_TAG/terminal.min.js"
-          echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
+
+          echo "Published to npm: https://www.npmjs.com/package/@w3term/terminal"
+          echo "CDN URLs:"
+          echo "https://cdn.jsdelivr.net/npm/@ww3term/terminal@$TAG_NAME/terminal.min.js"
+          echo "https://cdn.jsdelivr.net/npm/@ww3term/terminal@latest/terminal.min.js"
