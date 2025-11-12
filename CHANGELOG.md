@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/w3term/www/compare/v1.0.5...v1.0.6) (2025-11-12)
+
+
+### Bug Fixes
+
+* missing registry-url ([90d5b87](https://github.com/w3term/www/commit/90d5b87b456e0d13a44da9e831ba21eebd9a1553))
+
 ## [1.0.5](https://github.com/w3term/www/compare/v1.0.4...v1.0.5) (2025-11-12)
 
 
