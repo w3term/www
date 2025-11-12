@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/w3term/www/compare/v1.0.6...v1.0.7) (2025-11-12)
+
+
+### Bug Fixes
+
+* try publishing ([b3fb6b9](https://github.com/w3term/www/commit/b3fb6b9504f921d54533cb85a1954f15fd1157a8))
+
 ## [1.0.6](https://github.com/w3term/www/compare/v1.0.5...v1.0.6) (2025-11-12)
 
 
