@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/w3term/www/compare/v1.0.3...v1.0.4) (2025-11-12)
+
+
+### Bug Fixes
+
+* merge build and publish workflows ([c523feb](https://github.com/w3term/www/commit/c523feba5e2de53fbba2d31ed8590f8475242ff0))
+
 ## [1.0.3](https://github.com/w3term/www/compare/v1.0.2...v1.0.3) (2025-11-12)
 
 
