@@ -1,3 +1,10 @@
+## [1.0.11](https://github.com/w3term/www/compare/v1.0.10...v1.0.11) (2025-11-12)
+
+
+### Bug Fixes
+
+* cleanup publish ([53d76a8](https://github.com/w3term/www/commit/53d76a82b0a50bf4dae131a52453c0300b798f46))
+
 ## [1.0.10](https://github.com/w3term/www/compare/v1.0.9...v1.0.10) (2025-11-12)
 
 
