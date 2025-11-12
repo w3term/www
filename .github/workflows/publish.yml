@@ -2,7 +2,7 @@ name: Publish to npm
 
 on:
   workflow_run:
-    workflows: ["Build Production"]
+    workflows: ["Release"]
     types:
       - completed
 
