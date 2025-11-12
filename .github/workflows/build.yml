@@ -65,7 +65,6 @@ jobs:
           echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
           echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
 
-          cp index.html dist/index.html
           mkdir -p public
           cp -r dist/* public/
 
