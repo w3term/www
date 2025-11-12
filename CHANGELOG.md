@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/w3term/www/compare/v1.0.4...v1.0.5) (2025-11-12)
+
+
+### Bug Fixes
+
+* add missing id-token permission ([48e8147](https://github.com/w3term/www/commit/48e8147595425d2418836688b256bf92b0076e10))
+
 ## [1.0.4](https://github.com/w3term/www/compare/v1.0.3...v1.0.4) (2025-11-12)
 
 
