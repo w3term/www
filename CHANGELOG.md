@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/w3term/www/compare/v1.0.7...v1.0.8) (2025-11-12)
+
+
+### Bug Fixes
+
+* cannot publish to npm ([5fa209d](https://github.com/w3term/www/commit/5fa209d8646811562bcf8cb00b7f3603988d7ffe))
+
 ## [1.0.7](https://github.com/w3term/www/compare/v1.0.6...v1.0.7) (2025-11-12)
 
 
