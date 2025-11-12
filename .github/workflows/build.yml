@@ -34,20 +34,13 @@ jobs:
       - name: Install Terser
         run: npm install -g terser
 
-      - name: Prepare dist folder
-        run: mkdir -p dist
-
       - name: Build production bundle
         id: build
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
-          else
-            TAG_NAME="dev-${GITHUB_SHA::7}"
-          fi
-
+          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
           echo "Building version $TAG_NAME"
 
+          mkdir -p dist
           echo "/**" > dist/terminal.js
           echo " * Web Terminal Embed" >> dist/terminal.js
           echo " * Version $TAG_NAME" >> dist/terminal.js
@@ -56,14 +49,14 @@ jobs:
           echo " */" >> dist/terminal.js
           cat terminal.js >> dist/terminal.js
 
-          # Minify
-          terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
+          terser dist/terminal.js --compress --mangle --output dist/terminal.min.js
 
-          # Metadata
           echo "Version $TAG_NAME" > dist/VERSION.txt
           echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
           echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
-          echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
+
+          # Store tag name for next workflow
+          echo "$TAG_NAME" > dist/build-info.txt
 
           mkdir -p public
           cp -r dist/* public/
@@ -77,14 +70,3 @@ jobs:
           path: |
             dist/
             public/
-
-      - name: Attach artifacts to release
-        if: github.event_name == 'workflow_run'
-        env:
-          GH_TOKEN: ${{ secrets.PAT_CI }}
-        run: |
-          TAG_NAME=${{ steps.build.outputs.tag_name }}
-          echo "Attaching built artifacts to release $TAG_NAME"
-          
-          zip -r w3term-$TAG_NAME.zip dist
-          gh release upload "$TAG_NAME" "w3term-$TAG_NAME.zip" --repo ${{ github.repository }} --clobber
