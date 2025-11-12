@@ -1,16 +1,16 @@
-name: Publish to npm
+name: Build and Publish
 
 on:
   workflow_run:
-    workflows: ["Build Production"]
+    workflows: ["Release"]
     types:
       - completed
 
 permissions:
-  contents: read
+  contents: write  # Needed to checkout code and attach artifacts
 
 jobs:
-  publish:
+  build-and-publish:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
 
@@ -18,6 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           tags: true
 
@@ -26,24 +27,52 @@ jobs:
         with:
           node-version: 20
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: w3term-dist
-          path: dist
+      - name: Install Terser
+        run: npm install -g terser
 
-      - name: Read tag name
-        id: vars
+      - name: Prepare dist folder
+        run: mkdir -p dist
+
+      - name: Build production bundle
+        id: build
         run: |
-          TAG_NAME=$(cat dist/build-info.txt)
+          # Get the latest tag created by Release workflow
+          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Building version $TAG_NAME"
+
+          # Add header to terminal.js
+          echo "/**" > dist/terminal.js
+          echo " * Web Terminal Embed" >> dist/terminal.js
+          echo " * Version $TAG_NAME" >> dist/terminal.js
+          echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
+          echo " * Commit ${GITHUB_SHA}" >> dist/terminal.js
+          echo " */" >> dist/terminal.js
+          cat terminal.js >> dist/terminal.js
+
+          # Minify
+          terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
+
+          # Metadata
+          echo "Version $TAG_NAME" > dist/VERSION.txt
+          echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
+          echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
+          echo "Release Tag $TAG_NAME" >> dist/VERSION.txt
+
+          mkdir -p public
+          cp -r dist/* public/
+
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Configure npm
+      - name: Attach artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.PAT_CI }}
         run: |
-          npm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-          npm config set registry https://registry.npmjs.org/
+          TAG_NAME=${{ steps.build.outputs.tag_name }}
+          echo "Attaching built artifacts to release $TAG_NAME"
+          zip -r w3term-$TAG_NAME.zip dist
+          gh release upload "$TAG_NAME" "w3term-$TAG_NAME.zip" --repo ${{ github.repository }} --clobber
 
-      - name: Prepare package files
+      - name: Prepare npm package files
         run: |
           cp dist/terminal.js ./
           cp dist/terminal.min.js ./
@@ -51,12 +80,12 @@ jobs:
 
       - name: Publish to npm
         run: |
-          TAG_NAME=${{ steps.vars.outputs.tag_name }}
+          TAG_NAME=${{ steps.build.outputs.tag_name }}
           echo "Publishing version $TAG_NAME to npm"
           npm version $TAG_NAME --no-git-tag-version --allow-same-version
           npm publish --access public
 
-          echo "✅ Published to npm: https://www.npmjs.com/package/@w3term/terminal"
+          echo "Published to npm: https://www.npmjs.com/package/@w3term/terminal"
           echo "📦 CDN URLs:"
           echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
           echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
