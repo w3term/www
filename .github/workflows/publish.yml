@@ -1,59 +1,106 @@
-name: Publish to npm
+name: Build & Publish Terminal
 
 on:
+  push:
+    branches:
+      - develop
+    tags:
+      - 'v*'
   workflow_run:
     workflows: ["Release"]
     types:
       - completed
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
-  publish:
+  build-and-publish:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'push' || github.event_name == 'workflow_run'
 
     steps:
+      # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           tags: true
 
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: w3term-dist
-          path: dist
+      # Install Terser
+      - name: Install Terser
+        run: npm install -g terser
 
-      - name: Prepare package files
-        run: |
-          cp dist/terminal.js ./
-          cp dist/terminal.min.js ./
-          cp dist/VERSION.txt ./
+      # Prepare dist folder
+      - name: Prepare dist folder
+        run: mkdir -p dist
 
-      - name: Determine tag
-        id: vars
+      # Determine version and build
+      - name: Build bundle
+        id: build
         run: |
-          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            # Production build from tag
+            TAG_NAME=${GITHUB_REF##*/}
+            BUILD_TYPE="production"
+          elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
+            # Dev build from develop branch
+            TAG_NAME="dev-${GITHUB_SHA::7}"
+            BUILD_TYPE="dev"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            # Workflow_run triggered by Release → pick latest tag
+            TAG_NAME=$(git describe --tags $(git rev-list --tags --max-count=1))
+            BUILD_TYPE="production"
+          else
+            # fallback
+            TAG_NAME="dev-${GITHUB_SHA::7}"
+            BUILD_TYPE="dev"
+          fi
+
+          echo "Building $BUILD_TYPE version $TAG_NAME"
+
+          # JS header
+          echo "/**" > dist/terminal.js
+          echo " * Web Terminal Embed ($BUILD_TYPE)" >> dist/terminal.js
+          echo " * Version $TAG_NAME" >> dist/terminal.js
+          echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
+          echo " * Commit ${GITHUB_SHA}" >> dist/terminal.js
+          echo " */" >> dist/terminal.js
+          cat terminal.js >> dist/terminal.js
+
+          # Minify
+          terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
+
+          # Metadata
+          echo "Version $TAG_NAME" > dist/VERSION.txt
+          echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
+          echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
+          echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
+
+          mkdir -p public
+          cp -r dist/* public/
+
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
 
+      # Optional: publish to npm (production only)
       - name: Publish to npm
+        if: steps.build.outputs.build_type == 'production'
         run: |
-          TAG_NAME=${{ steps.vars.outputs.tag_name }}
+          TAG_NAME=${{ steps.build.outputs.tag_name }}
           echo "Publishing version $TAG_NAME to npm"
+          npm config set registry https://registry.npmjs.org/
           npm version $TAG_NAME --no-git-tag-version --allow-same-version
           npm publish --access public
 
-          echo "Published to npm: https://www.npmjs.com/package/@w3term/terminal"
-          echo "CDN URLs:"
+          echo "✅ Published to npm: https://www.npmjs.com/package/@w3term/terminal"
+          echo "📦 CDN URLs:"
           echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
           echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
