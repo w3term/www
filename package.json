@@ -1,5 +1,5 @@
 {
-    "name": "@web-terminal/terminal",
+    "name": "@w3term/terminal",
     "version": "1.0.0",
     "description": "Embeddable web terminal component",
     "main": "terminal.js",
@@ -17,7 +17,7 @@
     },
     "repository": {
       "type": "git",
-      "url": "https://gitlab.com/web-terminal/www.git"
+      "url": "https://github.com/w3term/www.git"
     },
     "keywords": [
       "terminal",
@@ -30,9 +30,9 @@
     "author": "Your Name luc.juggery@gmail.com",
     "license": "MIT",
     "bugs": {
-      "url": "https://gitlab.com/web-terminal/www/-/issues"
+      "url": "https://github.com/w3term/www/issues"
     },
-    "homepage": "https://web-terminal.gitlab.io/www/",
+    "homepage": "https://github.com/w3term",
     "publishConfig": {
       "access": "public"
     }
