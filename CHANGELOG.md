@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/w3term/www/compare/v1.0.1...v1.0.2) (2025-11-12)
+
+
+### Bug Fixes
+
+* remove ref to index file ([4486796](https://github.com/w3term/www/commit/448679603da0ad3ac30081990f0dde21b45bf990))
+
 ## [1.0.1](https://github.com/w3term/www/compare/v1.0.0...v1.0.1) (2025-11-12)
 
 
