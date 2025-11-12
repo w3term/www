@@ -1,3 +1,10 @@
+## [1.0.9](https://github.com/w3term/www/compare/v1.0.8...v1.0.9) (2025-11-12)
+
+
+### Bug Fixes
+
+* publish not triggered ([a5b3052](https://github.com/w3term/www/commit/a5b305262e7a95dffcd934fe434fbe49dcc63437))
+
 ## [1.0.8](https://github.com/w3term/www/compare/v1.0.7...v1.0.8) (2025-11-12)
 
 
