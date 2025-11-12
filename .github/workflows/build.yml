@@ -1,0 +1,58 @@
+name: Build Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-production:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install terser
+        run: npm install -g terser
+
+      - name: Prepare dist directory
+        run: mkdir -p dist
+
+      - name: Build production version
+        run: |
+          echo "Building production version $GITHUB_REF_NAME"
+          echo "/**" > dist/terminal.js
+          echo " * Web Terminal Embed" >> dist/terminal.js
+          echo " * Version $GITHUB_REF_NAME" >> dist/terminal.js
+          echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
+          echo " * Commit $GITHUB_SHA" >> dist/terminal.js
+          echo " * Release Tag $GITHUB_REF_NAME" >> dist/terminal.js
+          echo " */" >> dist/terminal.js
+          cat terminal.js >> dist/terminal.js
+          terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
+          echo "Version $GITHUB_REF_NAME" > dist/VERSION.txt
+          echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
+          echo "Commit $GITHUB_SHA" >> dist/VERSION.txt
+          echo "Release Tag $GITHUB_REF_NAME" >> dist/VERSION.txt
+          cp index.html dist/index.html
+          mkdir -p public
+          cp -r dist/* public/
+          ls -l dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build
+          path: |
+            dist/
+            public/
