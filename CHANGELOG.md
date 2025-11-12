@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/w3term/www/compare/v1.0.2...v1.0.3) (2025-11-12)
+
+
+### Bug Fixes
+
+* upload artifact in build ([720d5c7](https://github.com/w3term/www/commit/720d5c707b77e099c077522bc304239953b6487e))
+
 ## [1.0.2](https://github.com/w3term/www/compare/v1.0.1...v1.0.2) (2025-11-12)
 
 
