@@ -1,3 +1,10 @@
+## [1.0.10](https://github.com/w3term/www/compare/v1.0.9...v1.0.10) (2025-11-12)
+
+
+### Bug Fixes
+
+* publish is triggered by successful release ([2c2dbe0](https://github.com/w3term/www/commit/2c2dbe016b1fe1c64791b67638b6422c8e5272d7))
+
 ## [1.0.9](https://github.com/w3term/www/compare/v1.0.8...v1.0.9) (2025-11-12)
 
 
