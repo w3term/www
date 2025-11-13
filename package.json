@@ -1,7 +1,7 @@
 {
     "name": "@w3term/terminal",
     "version": "1.0.6",
-    "description": "Embeddable web terminal component",
+    "description": "Web embeddable terminal component",
     "main": "terminal.js",
     "browser": "terminal.min.js",
     "jsdelivr": "terminal.min.js",
