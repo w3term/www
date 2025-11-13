@@ -14,20 +14,25 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: write
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     environment: prod
-    if: github.event_name == 'push' || github.event_name == 'workflow_run'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
       # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
           fetch-depth: 0
-          fetch-tags: true
+
+      # Fetch tags explicitly for workflow_run
+      - name: Fetch tags
+        run: git fetch --tags --force
 
       # Setup Node.js
       - name: Setup Node.js
@@ -58,7 +63,7 @@ jobs:
             BUILD_TYPE="dev"
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
             # Workflow_run triggered by Release → pick latest tag
-            TAG_NAME=$(git describe --tags $(git rev-list --tags --max-count=1))
+            TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0)
             BUILD_TYPE="production"
           else
             # fallback
@@ -93,15 +98,20 @@ jobs:
           echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
 
       - name: Sync package.json version with tag
+        if: steps.build.outputs.build_type == 'production'
         run: |
-          TAG_NAME=${{ steps.vars.outputs.tag_name }}
-          npm version $TAG_NAME --no-git-tag-version
+          TAG_NAME=${{ steps.build.outputs.tag_name }}
+          # Remove 'v' prefix for npm version
+          VERSION=${TAG_NAME#v}
+          npm version $VERSION --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
         if: steps.build.outputs.build_type == 'production'
+        env:
+          TAG_NAME: ${{ steps.build.outputs.tag_name }}
         run: |
           echo "Publishing version $TAG_NAME to npm"
-          npm publish --access public
+          npm publish --provenance --access public
           echo "Published: @w3term/terminal@$TAG_NAME"
           echo "CDN: https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
           echo "CDN latest: https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
