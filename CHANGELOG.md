@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/w3term/terminal/compare/v1.0.4...v1.0.5) (2025-11-13)
+
+
+### Bug Fixes
+
+* add --provenance flag when publishing to npm ([a65e95a](https://github.com/w3term/terminal/commit/a65e95a9b63f031b5951855e3b64f78089163dd2))
+
 ## [1.0.4](https://github.com/w3term/terminal/compare/v1.0.3...v1.0.4) (2025-11-13)
 
 
