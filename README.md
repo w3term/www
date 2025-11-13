@@ -7,7 +7,7 @@ A lightweight JavaScript library for embedding interactive terminal sessions in 
 Add the script to your HTML page:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"></script>
 <script>
 const terminal = new WebTerminalEmbed({
     githubAppName: 'your-app-name',
@@ -19,10 +19,10 @@ const terminal = new WebTerminalEmbed({
 
 ## CDN URLs
 
-- **Latest**: `https://cdn.jsdelivr.net/npm/@web-terminal/terminal@latest/terminal.min.js`
-- **Specific version**: `https://cdn.jsdelivr.net/npm/@web-terminal/terminal@X.Y.Z/terminal.min.js`
+- **Latest**: `https://cdn.jsdelivr.net/npm/@ww3term/terminal@latest/terminal.min.js`
+- **Specific version**: `https://cdn.jsdelivr.net/npm/@w3term/terminal@X.Y.Z/terminal.min.js`
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 | Option | Required | Description |
 |--------|----------|-------------|
