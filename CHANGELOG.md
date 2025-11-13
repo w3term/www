@@ -1,3 +1,10 @@
+## [1.0.14](https://github.com/w3term/terminal/compare/v1.0.13...v1.0.14) (2025-11-13)
+
+
+### Bug Fixes
+
+* incorrect tags property ([34468c2](https://github.com/w3term/terminal/commit/34468c2af95bc0456b5baf5c2b003e6c98116b09))
+
 ## [1.0.13](https://github.com/w3term/terminal/compare/v1.0.12...v1.0.13) (2025-11-13)
 
 
