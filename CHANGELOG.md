@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/w3term/terminal/compare/v1.0.5...v1.0.6) (2025-11-13)
+
+
+### Bug Fixes
+
+* another publication attempt ([5181cf0](https://github.com/w3term/terminal/commit/5181cf038d198b3c5a3b9fa026eb21db6bba3f14))
+
 ## [1.0.5](https://github.com/w3term/terminal/compare/v1.0.4...v1.0.5) (2025-11-13)
 
 
