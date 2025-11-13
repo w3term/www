@@ -1,3 +1,10 @@
+## [1.0.17](https://github.com/w3term/terminal/compare/v1.0.16...v1.0.17) (2025-11-13)
+
+
+### Bug Fixes
+
+* force CI ([3d3ab44](https://github.com/w3term/terminal/commit/3d3ab44c3b0b18733be6cbf0abe538550fd20597))
+
 ## [1.0.16](https://github.com/w3term/terminal/compare/v1.0.15...v1.0.16) (2025-11-13)
 
 
