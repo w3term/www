@@ -1,4 +1,4 @@
-name: Build & Publish Terminal
+name: Build_Publish
 
 on:
   push:
