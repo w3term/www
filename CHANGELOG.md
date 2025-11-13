@@ -1,3 +1,11 @@
+## [1.0.22](https://github.com/w3term/terminal/compare/v1.0.21...v1.0.22) (2025-11-13)
+
+
+### Bug Fixes
+
+* add missing npm plugin in .releaserc ([3c85a81](https://github.com/w3term/terminal/commit/3c85a810aa9239e911ef29bda328f2a20ea9f5e3))
+* do not attempt to publish yet ([e12dd67](https://github.com/w3term/terminal/commit/e12dd676f4ff766c43e6b02db42099985fa90bcd))
+
 ## [1.0.21](https://github.com/w3term/terminal/compare/v1.0.20...v1.0.21) (2025-11-13)
 
 
