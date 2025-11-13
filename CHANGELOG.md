@@ -1,3 +1,10 @@
+## [1.0.18](https://github.com/w3term/terminal/compare/v1.0.17...v1.0.18) (2025-11-13)
+
+
+### Bug Fixes
+
+* updated publish workflow ([41e4b0b](https://github.com/w3term/terminal/commit/41e4b0ba0e86a12f76bf2cba1f2db45e565e96cd))
+
 ## [1.0.17](https://github.com/w3term/terminal/compare/v1.0.16...v1.0.17) (2025-11-13)
 
 
