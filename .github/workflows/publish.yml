@@ -17,6 +17,7 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment: prod
     if: github.event_name == 'push' || github.event_name == 'workflow_run'
 
     steps:
