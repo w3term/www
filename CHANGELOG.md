@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/w3term/terminal/compare/v1.0.3...v1.0.4) (2025-11-13)
+
+
+### Bug Fixes
+
+* add trailing slash to registry url ([06d91a8](https://github.com/w3term/terminal/commit/06d91a8cf806379ffa963e8c1c213424b701f180))
+
 ## [1.0.3](https://github.com/w3term/terminal/compare/v1.0.2...v1.0.3) (2025-11-13)
 
 
