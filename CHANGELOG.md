@@ -1,3 +1,11 @@
+## [1.0.12](https://github.com/w3term/terminal/compare/v1.0.11...v1.0.12) (2025-11-13)
+
+
+### Bug Fixes
+
+* force trigger CI ([eca4e19](https://github.com/w3term/terminal/commit/eca4e198612d5efeaa93a63db4bff706ba489874))
+* wrong repo name in package.json ([7f0937f](https://github.com/w3term/terminal/commit/7f0937ff36839e0e47c57e8d3947ffcf231bb97f))
+
 ## [1.0.11](https://github.com/w3term/www/compare/v1.0.10...v1.0.11) (2025-11-12)
 
 
