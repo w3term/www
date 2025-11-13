@@ -1,3 +1,10 @@
+## [1.0.15](https://github.com/w3term/terminal/compare/v1.0.14...v1.0.15) (2025-11-13)
+
+
+### Bug Fixes
+
+* rename publish workflow ([87ab7b3](https://github.com/w3term/terminal/commit/87ab7b3c01843b6cb4bbb4ec4592a278f60d7fc1))
+
 ## [1.0.14](https://github.com/w3term/terminal/compare/v1.0.13...v1.0.14) (2025-11-13)
 
 
