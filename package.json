@@ -1,6 +1,6 @@
 {
     "name": "@w3term/terminal",
-    "version": "1.0.13",
+    "version": "1.0.0",
     "description": "Web embeddable terminal component",
     "main": "terminal.js",
     "browser": "terminal.min.js",
@@ -19,16 +19,9 @@
       "type": "git",
       "url": "https://github.com/w3term/terminal.git"
     },
-    "keywords": [
-      "terminal",
-      "web",
-      "embed",
-      "console",
-      "javascript",
-      "xterm"
-    ],
+    "keywords": ["terminal","web","console","shell","xterm"],
     "author": "Your Name luc.juggery@gmail.com",
-    "license": "MIT",
+    "license": "Apache 2.0",
     "bugs": {
       "url": "https://github.com/w3term/terminal/issues"
     },

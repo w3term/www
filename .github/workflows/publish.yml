@@ -12,8 +12,8 @@ on:
       - completed
 
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 jobs:
   build-and-publish:
@@ -92,17 +92,16 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
 
-      # Optional: publish to npm (production only)
+      - name: Sync package.json version with tag
+        run: |
+          TAG_NAME=${{ steps.vars.outputs.tag_name }}
+          npm version $TAG_NAME --no-git-tag-version
+
       - name: Publish to npm
         if: steps.build.outputs.build_type == 'production'
         run: |
-          TAG_NAME=${{ steps.build.outputs.tag_name }}
           echo "Publishing version $TAG_NAME to npm"
-          npm config set registry https://registry.npmjs.org/
-          npm version $TAG_NAME --no-git-tag-version --allow-same-version
           npm publish --access public
-
-          echo "✅ Published to npm: https://www.npmjs.com/package/@w3term/terminal"
-          echo "📦 CDN URLs:"
-          echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
-          echo "https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
+          echo "Published: @w3term/terminal@$TAG_NAME"
+          echo "CDN: https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
+          echo "CDN latest: https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
