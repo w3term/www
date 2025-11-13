@@ -1,3 +1,10 @@
+## [1.0.13](https://github.com/w3term/terminal/compare/v1.0.12...v1.0.13) (2025-11-13)
+
+
+### Bug Fixes
+
+* add environment in CI ([6e01c85](https://github.com/w3term/terminal/commit/6e01c85961a6810ae64e473132ba571a909f6f47))
+
 ## [1.0.12](https://github.com/w3term/terminal/compare/v1.0.11...v1.0.12) (2025-11-13)
 
 
