@@ -21,14 +21,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org/'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install Terser
         run: npm install -g terser
@@ -39,39 +42,43 @@ jobs:
       - name: Build production bundle
         id: build
         run: |
-          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0)
+          COMMIT_SHA=${{ github.event.workflow_run.head_sha }}
           echo "Building version $TAG_NAME"
 
           echo "/**" > dist/terminal.js
           echo " * Web Terminal Embed" >> dist/terminal.js
           echo " * Version $TAG_NAME" >> dist/terminal.js
           echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
-          echo " * Commit ${GITHUB_SHA}" >> dist/terminal.js
+          echo " * Commit $COMMIT_SHA" >> dist/terminal.js
           echo " */" >> dist/terminal.js
           cat terminal.js >> dist/terminal.js
 
           # Minify
-          npm install -g terser
           terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
 
           # Metadata
           echo "Version $TAG_NAME" > dist/VERSION.txt
           echo "Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/VERSION.txt
-          echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
-          echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
+          echo "Commit $COMMIT_SHA" >> dist/VERSION.txt
+          echo "Release Tag $TAG_NAME" >> dist/VERSION.txt
 
+          # Strip 'v' prefix for npm
+          VERSION=${TAG_NAME#v}
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Prepare package files
+      - name: Copy package files to dist
         run: |
-          cp dist/terminal.js ./
-          cp dist/terminal.min.js ./
-          cp dist/VERSION.txt ./
+          cp LICENSE dist/
+          cp package.json dist/
+          cp README.md dist/
 
-      - name: Publish to npm
+      - name: Publish to npm from dist
+        working-directory: dist
         run: |
-          TAG_NAME=${{ steps.build.outputs.tag_name }}
-          echo "Publishing version $TAG_NAME to npm"
-          npm version $TAG_NAME --no-git-tag-version --allow-same-version
+          VERSION=${{ steps.build.outputs.version }}
+          echo "Publishing version $VERSION to npm"
+          npm version $VERSION --no-git-tag-version --allow-same-version
           npm publish --provenance --access public
-          echo "Published: https://www.npmjs.com/package/@w3term/terminal"
+          echo "✅ Published: https://www.npmjs.com/package/@w3term/terminal/v/$VERSION"
