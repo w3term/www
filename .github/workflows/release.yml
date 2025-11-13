@@ -24,10 +24,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm install @semantic-release/changelog @semantic-release/github @semantic-release/git @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+        run: npm install \
+          @semantic-release/changelog \
+          @semantic-release/github \
+          @semantic-release/git \
+          @semantic-release/commit-analyzer \
+          @semantic-release/release-notes-generator \
+          @semantic-release/npm
 
       - name: Run semantic-release
         env:
