@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/w3term/terminal/compare/v1.0.6...v1.0.7) (2025-11-13)
+
+
+### Bug Fixes
+
+* remove registry-url for testing purposes ([317ac6d](https://github.com/w3term/terminal/commit/317ac6da87a7431ec03bc4097e4a9c70b62332ee))
+
 ## [1.0.6](https://github.com/w3term/terminal/compare/v1.0.5...v1.0.6) (2025-11-13)
 
 
