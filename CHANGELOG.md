@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/w3term/terminal/compare/v1.0.7...v1.0.8) (2025-11-13)
+
+
+### Bug Fixes
+
+* try to trigger publish with workflow distach ([1186f47](https://github.com/w3term/terminal/commit/1186f475bd0a0fb787db49337689b9524e60fb05))
+
 ## [1.0.7](https://github.com/w3term/terminal/compare/v1.0.6...v1.0.7) (2025-11-13)
 
 
