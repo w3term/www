@@ -1,10 +1,12 @@
 name: Build_Publish
 
 on:
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -15,23 +17,19 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     environment: prod
-    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.tag }}
           fetch-depth: 0
-
-      - name: Fetch tags
-        run: git fetch --tags --force
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Remove registry-url to avoid creating .npmrc with token
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install Terser
         run: npm install -g terser
@@ -42,8 +40,8 @@ jobs:
       - name: Build production bundle
         id: build
         run: |
-          TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0)
-          COMMIT_SHA=${{ github.event.workflow_run.head_sha }}
+          TAG_NAME=${{ inputs.tag }}
+          COMMIT_SHA=$(git rev-parse HEAD)
           echo "Building version $TAG_NAME"
 
           echo "/**" > dist/terminal.js
@@ -65,7 +63,6 @@ jobs:
 
           # Strip 'v' prefix for npm
           VERSION=${TAG_NAME#v}
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Copy package files to dist
