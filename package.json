@@ -7,26 +7,40 @@
     "jsdelivr": "terminal.min.js",
     "unpkg": "terminal.min.js",
     "files": [
-      "terminal.js",
-      "terminal.min.js",
-      "VERSION.txt",
-      "index.html"
+        "terminal.js",
+        "terminal.min.js",
+        "VERSION.txt",
+        "index.html"
     ],
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
-      "type": "git",
-      "url": "https://github.com/w3term/terminal.git"
+        "type": "git",
+        "url": "https://github.com/w3term/terminal.git"
     },
-    "keywords": ["terminal","web","console","shell","xterm"],
+    "keywords": [
+        "terminal",
+        "web",
+        "console",
+        "shell",
+        "xterm"
+    ],
     "author": "Your Name luc.juggery@gmail.com",
     "license": "Apache 2.0",
     "bugs": {
-      "url": "https://github.com/w3term/terminal/issues"
+        "url": "https://github.com/w3term/terminal/issues"
     },
     "homepage": "https://github.com/w3term",
     "publishConfig": {
-      "access": "public"
+        "access": "public"
+    },
+    "dependencies": {
+        "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/commit-analyzer": "^13.0.1",
+        "@semantic-release/git": "^10.0.1",
+        "@semantic-release/github": "^11.0.6",
+        "@semantic-release/npm": "^12.0.2",
+        "@semantic-release/release-notes-generator": "^14.1.0"
     }
-  }
+}

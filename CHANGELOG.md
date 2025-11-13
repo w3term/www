@@ -1,3 +1,10 @@
+## [1.0.21](https://github.com/w3term/terminal/compare/v1.0.20...v1.0.21) (2025-11-13)
+
+
+### Bug Fixes
+
+* update .releaserc so it updates package.json ([7913e24](https://github.com/w3term/terminal/commit/7913e24a6616a2bfbabe80c612297b9638303a3f))
+
 ## [1.0.20](https://github.com/w3term/terminal/compare/v1.0.19...v1.0.20) (2025-11-13)
 
 
