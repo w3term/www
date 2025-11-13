@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/w3term/terminal/compare/v1.0.2...v1.0.3) (2025-11-13)
+
+
+### Bug Fixes
+
+* update URLs ([9c7df38](https://github.com/w3term/terminal/commit/9c7df38b618b83f9a1669dcb8b05fd11e782877a))
+
 ## [1.0.2](https://github.com/w3term/terminal/compare/v1.0.1...v1.0.2) (2025-11-13)
 
 
