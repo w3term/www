@@ -1,3 +1,10 @@
+## [1.0.19](https://github.com/w3term/terminal/compare/v1.0.18...v1.0.19) (2025-11-13)
+
+
+### Bug Fixes
+
+* manually changed version in package.json for test purposes ([e4f0aff](https://github.com/w3term/terminal/commit/e4f0aff37cda53e03817ce847c573d5a47c3cb77))
+
 ## [1.0.18](https://github.com/w3term/terminal/compare/v1.0.17...v1.0.18) (2025-11-13)
 
 
