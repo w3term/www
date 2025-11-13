@@ -1,3 +1,12 @@
+## [1.0.20](https://github.com/w3term/terminal/compare/v1.0.19...v1.0.20) (2025-11-13)
+
+
+### Bug Fixes
+
+* add semantic-release/npm ([5349e7d](https://github.com/w3term/terminal/commit/5349e7d3f2859be9acd4598c655f29a831b2e93b))
+* format ([35b92a5](https://github.com/w3term/terminal/commit/35b92a56137cf01ffafe3fc373c503bdabe683ab))
+* simplify workflows ([9e0b2f5](https://github.com/w3term/terminal/commit/9e0b2f5321de17db10130ad8893dd620d1795639))
+
 ## [1.0.19](https://github.com/w3term/terminal/compare/v1.0.18...v1.0.19) (2025-11-13)
 
 
