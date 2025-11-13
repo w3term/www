@@ -1,3 +1,10 @@
+## [1.0.16](https://github.com/w3term/terminal/compare/v1.0.15...v1.0.16) (2025-11-13)
+
+
+### Bug Fixes
+
+* add migging permission ([a5b113b](https://github.com/w3term/terminal/commit/a5b113b018a8a0b52df8ed57cf874519cf5f8728))
+
 ## [1.0.15](https://github.com/w3term/terminal/compare/v1.0.14...v1.0.15) (2025-11-13)
 
 
