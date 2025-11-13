@@ -1,11 +1,6 @@
 name: Build_Publish
 
 on:
-  push:
-    branches:
-      - develop
-    tags:
-      - 'v*'
   workflow_run:
     workflows: ["Release"]
     types:
@@ -20,62 +15,35 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     environment: prod
-    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
-      # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+          fetch-tags: true
           fetch-depth: 0
 
-      # Fetch tags explicitly for workflow_run
-      - name: Fetch tags
-        run: git fetch --tags --force
-
-      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      # Install Terser
       - name: Install Terser
         run: npm install -g terser
 
-      # Prepare dist folder
       - name: Prepare dist folder
         run: mkdir -p dist
 
-      # Determine version and build
-      - name: Build bundle
+      - name: Build production bundle
         id: build
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            # Production build from tag
-            TAG_NAME=${GITHUB_REF##*/}
-            BUILD_TYPE="production"
-          elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
-            # Dev build from develop branch
-            TAG_NAME="dev-${GITHUB_SHA::7}"
-            BUILD_TYPE="dev"
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            # Workflow_run triggered by Release → pick latest tag
-            TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0)
-            BUILD_TYPE="production"
-          else
-            # fallback
-            TAG_NAME="dev-${GITHUB_SHA::7}"
-            BUILD_TYPE="dev"
-          fi
+          TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Building version $TAG_NAME"
 
-          echo "Building $BUILD_TYPE version $TAG_NAME"
-
-          # JS header
           echo "/**" > dist/terminal.js
-          echo " * Web Terminal Embed ($BUILD_TYPE)" >> dist/terminal.js
+          echo " * Web Terminal Embed" >> dist/terminal.js
           echo " * Version $TAG_NAME" >> dist/terminal.js
           echo " * Build Date $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> dist/terminal.js
           echo " * Commit ${GITHUB_SHA}" >> dist/terminal.js
@@ -83,6 +51,7 @@ jobs:
           cat terminal.js >> dist/terminal.js
 
           # Minify
+          npm install -g terser
           terser dist/terminal.js --compress --mangle --output dist/terminal.min.js --comments "/^!|@preserve|@license|@cc_on/i"
 
           # Metadata
@@ -91,27 +60,18 @@ jobs:
           echo "Commit ${GITHUB_SHA}" >> dist/VERSION.txt
           echo "Release Tag ${TAG_NAME}" >> dist/VERSION.txt
 
-          mkdir -p public
-          cp -r dist/* public/
-
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
 
-      - name: Sync package.json version with tag
-        if: steps.build.outputs.build_type == 'production'
+      - name: Prepare package files
+        run: |
+          cp dist/terminal.js ./
+          cp dist/terminal.min.js ./
+          cp dist/VERSION.txt ./
+
+      - name: Publish to npm via OIDC
         run: |
           TAG_NAME=${{ steps.build.outputs.tag_name }}
-          # Remove 'v' prefix for npm version
-          VERSION=${TAG_NAME#v}
-          npm version $VERSION --no-git-tag-version --allow-same-version
-
-      - name: Publish to npm
-        if: steps.build.outputs.build_type == 'production'
-        env:
-          TAG_NAME: ${{ steps.build.outputs.tag_name }}
-        run: |
           echo "Publishing version $TAG_NAME to npm"
-          npm publish --provenance --access public
-          echo "Published: @w3term/terminal@$TAG_NAME"
-          echo "CDN: https://cdn.jsdelivr.net/npm/@w3term/terminal@$TAG_NAME/terminal.min.js"
-          echo "CDN latest: https://cdn.jsdelivr.net/npm/@w3term/terminal@latest/terminal.min.js"
+          npm version $TAG_NAME --no-git-tag-version --allow-same-version
+          npm publish --access public
+          echo "Published: https://www.npmjs.com/package/@w3term/terminal"
