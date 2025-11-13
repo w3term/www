@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/w3term/terminal/compare/v1.0.1...v1.0.2) (2025-11-13)
+
+
+### Bug Fixes
+
+* init version 1.0.1 ([e017307](https://github.com/w3term/terminal/commit/e01730701f0403cd0317e9ffae6de9449ae7bc8c))
+
 # 1.0.0 (2025-11-13)
 
 
